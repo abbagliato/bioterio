@@ -72,7 +72,7 @@ p{margin:0}
 .cage-title span{font-family:var(--body);font-size:13px;color:var(--muted);font-weight:800}
 
 /* etapas */
-.steps{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.steps{display:flex;flex-wrap:wrap;gap:6px}
 .steps::-webkit-scrollbar{display:none}
 .chip{flex:none;font-size:13px;font-weight:800;padding:5px 10px;border-radius:999px;background:var(--soft);color:var(--muted);white-space:nowrap}
 .chip.done{background:var(--good);color:#fff}
@@ -207,7 +207,7 @@ const GLOSSARIO = [
   ['Grade','Parte de metal que fica sobre a gaiola e segura o bebedouro e a ração.'],
   ['Desmame','Separar os filhotes da mãe quando já comem sozinhos. Nos camundongos isso acontece aos 21 dias.'],
   ['EPI','Equipamento de Proteção Individual: propé, jaleco, touca, máscara, óculos de proteção e luvas. Protege você e os animais.'],
-  ['3Rs','Substituir animais quando possível, Reduzir o número usado e Refinar o cuidado para que tenham bem-estar.']
+  ['3Rs','Regras para usar animais na ciência com cuidado. O nome vem do inglês: Replacement (Substituição), Reduction (Redução) e Refinement (Refinamento). Em português, uma das palavras começa com S, mas o nome 3Rs continua o mesmo no mundo todo.']
 ];
 
 // ---------- PERSONAGEM ----------
@@ -531,8 +531,12 @@ function telaInicio(){
   </div>
   <div class="card" style="display:flex;flex-direction:column;gap:8px">
     <h3>Por que cuidamos bem dos animais na ciência?</h3>
-    <p>Os animais do biotério ajudam a descobrir vacinas e remédios. Por isso eles merecem casa limpa, comida, água e conforto todos os dias. Os cientistas seguem os <b>3Rs</b>:</p>
-    <ul class="list"><li><b>Substituir</b> o uso de animais quando der.</li><li><b>Reduzir</b> o número de animais.</li><li><b>Refinar</b> o cuidado para eles viverem bem.</li></ul>
+    <p>Os animais do biotério ajudam a descobrir vacinas e remédios. Por isso eles merecem casa limpa, comida, água e conforto todos os dias. Os cientistas seguem os <b>3Rs</b>.</p>
+    <p>O nome vem do inglês, de três palavras que começam com R: <i>Replacement</i>, <i>Reduction</i> e <i>Refinement</i>. Em português ficam assim:</p>
+    <ul class="list">
+      <li><b>Substituição</b> (<i>Replacement</i>): trocar o uso de animais por outros métodos sempre que possível, como células cultivadas ou programas de computador.</li>
+      <li><b>Redução</b> (<i>Reduction</i>): usar o menor número de animais que a pesquisa precisa.</li>
+      <li><b>Refinamento</b> (<i>Refinement</i>): cuidar melhor dos animais para evitar dor e estresse. É isso que você vai praticar neste jogo!</li></ul>
   </div>
   <button class="btn" id="comecar">Começar</button>
   ${LIVRE ? '<button class="btn ghost small" id="qrBtn">QR Code para outros aparelhos</button>' : ''}`;
