@@ -114,7 +114,10 @@ p{margin:0}
 .modal .sheet{background:var(--panel);width:100%;max-width:560px;max-height:calc(100% - 24px);overflow:auto;border-radius:22px 22px 0 0;margin-bottom:0;
   padding:18px max(16px,env(safe-area-inset-right,0px)) calc(20px + var(--aviso-h) + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
 .gloss dt{font-family:var(--display);font-size:18px;color:var(--accent)}
-.gloss dd{margin:0 0 10px}
+.gl-item{padding-block:6px;border-bottom:1px solid var(--line)}
+.gloss-btn span{display:none}
+.gloss{margin:0}
+.gloss dd{margin:2px 0 0}
 .list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .tag{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
 
@@ -173,6 +176,8 @@ p{margin:0}
   body{font-size:17px}
   .app{max-width:1180px}
   .top .phase b{font-size:22px}
+  .gloss-btn{width:auto;padding:0 14px;display:inline-flex;align-items:center;gap:6px}
+  .gloss-btn span{display:inline;font-size:15px}
   .screen{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);align-items:start;gap:18px 28px;padding-block:24px 32px}
   .screen>*{grid-column:2}
   .screen>.stage{grid-column:1;grid-row:1 / span 12}
@@ -210,7 +215,7 @@ p{margin:0}
     <div class="phase"><small id="phaseNum">Fase 1 de 5</small><b id="phaseName">Montar a gaiola</b></div>
     <span class="pts" id="pts" aria-label="Pontos">0</span>
     <button class="icon-btn" id="soundBtn" aria-label="Som ligado">♪</button>
-    <button class="icon-btn" id="glossBtn" aria-label="Abrir glossário">?</button>
+    <button class="icon-btn gloss-btn" id="glossBtn" aria-label="Abrir glossário">?<span> Glossário</span></button>
   </header>
   <main class="wrap screen" id="main"></main>
 </div>
@@ -246,19 +251,39 @@ const ORDEM = [
 ];
 const ENRIQ = ['ninho','rolo','iglu'];
 
+// Glossário: [termo, explicação para crianças]. A lista aparece em ordem alfabética.
 const GLOSSARIO = [
-  ['Biotério','Lugar onde vivem e são cuidados os animais usados na pesquisa científica.'],
-  ['Microisolador','Gaiola de plástico transparente com tampa que tem filtro. O filtro deixa o ar passar e barra germes.'],
-  ['Maravalha','Raspas de madeira limpas usadas como cama. Absorvem o xixi e deixam a gaiola sequinha.'],
-  ['Enriquecimento ambiental','Objetos que deixam a vida dos animais mais interessante e confortável, como ninho, rolo e iglu.'],
-  ['Iglu','Abrigo, geralmente de plástico, onde os camundongos se escondem e descansam.'],
-  ['Ninho','Material macio, como papel ou algodão próprio, que os animais usam para montar o ninho e se aquecer.'],
-  ['Rolo','Tubo de papelão onde os camundongos passam, se escondem e roem.'],
-  ['Propé','Capa descartável que cobre os sapatos para não levar sujeira para dentro do biotério.'],
-  ['Grade','Parte de metal que fica sobre a gaiola e segura o bebedouro e a ração.'],
-  ['Desmame','Separar os filhotes da mãe quando já comem sozinhos. Nos camundongos isso acontece aos 21 dias.'],
-  ['EPI','Equipamento de Proteção Individual: propé, jaleco, touca, máscara, óculos de proteção e luvas. Protege você e os animais.'],
-  ['3Rs','Regras para usar animais na ciência com cuidado. O nome vem do inglês: Replacement (Substituição), Reduction (Redução) e Refinement (Refinamento). Em português, uma das palavras começa com S, mas o nome 3Rs continua o mesmo no mundo todo.']
+  ['3Rs','Três regras para usar animais na ciência com responsabilidade. O nome vem do inglês: Replacement, Reduction e Refinement. Em português: Substituição (trocar animais por outros métodos sempre que der), Redução (usar o menor número possível de animais) e Refinamento (cuidar melhor para evitar dor e estresse).'],
+  ['Acasalamento','Quando o macho e a fêmea ficam juntos para terem filhotes. No jogo, a gaiola de reprodução tem 1 macho com 1 ou 2 fêmeas.'],
+  ['Bebedouro','Garrafinha com um bico de metal, presa na grade. O camundongo lambe o bico para beber água.'],
+  ['Bem-estar animal','É o animal estar saudável, confortável e calmo: sem fome, sem sede, sem dor e sem medo, e podendo fazer o que gosta, como cavar, roer, se esconder e fazer ninho.'],
+  ['Biotério','Lugar onde vivem e são cuidados os animais usados na pesquisa científica. Tem regras de limpeza e temperatura controlada para os animais ficarem saudáveis.'],
+  ['Bioterista','Profissional que cuida dos animais do biotério todos os dias: dá comida e água, troca as gaiolas e observa se todos estão bem. No jogo, você é um Jovem Bioterista!'],
+  ['Camundongo','Pequeno roedor, parente do rato, mas bem menor. É o animal mais usado nas pesquisas que ajudam a criar vacinas e remédios.'],
+  ['CEUA','Comissão de Ética no Uso de Animais. É um grupo de pessoas que confere se uma pesquisa com animais é mesmo necessária e se os animais serão bem cuidados, antes de ela começar.'],
+  ['CONCEA','Conselho Nacional de Controle de Experimentação Animal. Cria as regras do Brasil para o cuidado e o uso de animais na ciência.'],
+  ['Comedouro','Parte da grade em forma de cestinha, onde fica a ração. Os camundongos pegam a comida pelas frestas.'],
+  ['Desmame','Separar os filhotes da mãe quando eles já comem ração sozinhos. Nos camundongos isso acontece aos 21 dias. Machos e fêmeas vão para gaiolas diferentes.'],
+  ['Enriquecimento ambiental','Objetos que deixam a casa dos animais mais divertida e confortável, como ninho, rolo e iglu. Com eles os camundongos podem se esconder, brincar, roer e fazer ninho, como fariam na natureza.'],
+  ['EPI','Equipamento de Proteção Individual: as roupas e acessórios que o bioterista usa para proteger a si mesmo e os animais. No jogo: propé, jaleco, touca, máscara, óculos de proteção e luvas.'],
+  ['Filhote','Camundongo bebê. Nasce sem pelo e de olhos fechados, que se abrem com 12 a 14 dias. Mama na mãe até o desmame.'],
+  ['Filtro','Material na tampa da gaiola que deixa o ar passar, mas segura poeira e germes.'],
+  ['Grade','Parte de metal que fica sobre a gaiola, embaixo da tampa. Segura o bebedouro e a ração.'],
+  ['Higienização das mãos','Lavar bem as mãos com água e sabão, esfregando palmas, costas e entre os dedos. É o primeiro passo antes de entrar no biotério.'],
+  ['Iglu','Abrigo em forma de casinha redonda, geralmente de plástico, onde os camundongos se escondem e descansam.'],
+  ['Jaleco','Avental de manga comprida que protege a roupa e o corpo. Faz parte do EPI.'],
+  ['Luvas','Protegem as mãos e evitam levar germes para os animais. São o último EPI a ser colocado.'],
+  ['Maravalha','Raspas de madeira limpas usadas como cama. Absorvem o xixi, deixam a gaiola sequinha e os camundongos adoram cavar nelas.'],
+  ['Máscara','Cobre o nariz e a boca. Evita que a gente respire o pó da gaiola e que passe germes para os animais.'],
+  ['Microisolador','Gaiola de plástico transparente com tampa e filtro. Cada gaiola fica como uma casinha separada, protegida de germes.'],
+  ['Ninho','Material macio, como papel picado, que os camundongos usam para montar a caminha e se aquecer. As mamães usam para proteger os filhotes.'],
+  ['Óculos de proteção','Protegem os olhos de poeira e respingos. Fazem parte do EPI.'],
+  ['Propé','Capa que cobre os sapatos para não levar a sujeira da rua para dentro do biotério.'],
+  ['Ração','Comida dos camundongos em forma de bolinhas, com tudo o que eles precisam para crescer saudáveis.'],
+  ['Roedor','Animal com dentes da frente que crescem a vida toda, como camundongos, ratos e hamsters. Por isso eles precisam roer, e o rolo de papelão ajuda.'],
+  ['Rolo','Tubo de papelão onde os camundongos passam por dentro, se escondem e roem.'],
+  ['Touca','Cobre o cabelo para nenhum fio cair dentro da gaiola. Faz parte do EPI.'],
+  ['Troca de gaiola','Passar os animais para uma gaiola limpa, com maravalha, água e ração novas. No biotério isso costuma ser feito a cada 7 dias.']
 ];
 
 // ---------- PERSONAGEM ----------
@@ -428,9 +453,22 @@ function abrirModal(html){ $('sheet').innerHTML=html; $('modal').hidden=false; }
 function fecharModal(){ $('modal').hidden=true; }
 $('modal').addEventListener('click',e=>{ if(e.target.id==='modal') fecharModal(); });
 
-$('glossBtn').onclick=()=>abrirModal(`<span class="tag">Glossário</span><h2>Palavras do biotério</h2>
-  <dl class="gloss">${GLOSSARIO.map(([t,d])=>`<dt>${t}</dt><dd>${d}</dd>`).join('')}</dl>
-  <button class="btn" onclick="fecharModal()">Voltar ao jogo</button>`);
+function abrirGlossario(){
+  const lista = GLOSSARIO.slice().sort((a,b)=>a[0].localeCompare(b[0],'pt',{sensitivity:'base'}));
+  abrirModal(`<span class="tag">Glossário</span><h2>Palavras do biotério</h2>
+    <p class="lead">${lista.length} palavras que o bioterista usa no dia a dia.</p>
+    <label class="field" for="glossBusca">Procurar palavra<input id="glossBusca" type="search" autocomplete="off" placeholder="Ex.: maravalha"></label>
+    <dl class="gloss" id="glossLista">${lista.map(([t,d])=>`<div class="gl-item"><dt>${t}</dt><dd>${d}</dd></div>`).join('')}</dl>
+    <p class="lead" id="glossVazio" hidden>Nenhuma palavra encontrada.</p>
+    <button class="btn" onclick="fecharModal()">Voltar ao jogo</button>`);
+  const semAcento = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  $('glossBusca').oninput = () => {
+    const q = semAcento($('glossBusca').value.trim()); let n = 0;
+    $('glossLista').querySelectorAll('.gl-item').forEach(el => { const ok = !q || semAcento(el.textContent).includes(q); el.hidden = !ok; if (ok) n++; });
+    $('glossVazio').hidden = n > 0;
+  };
+}
+$('glossBtn').onclick = abrirGlossario;
 $('soundBtn').onclick=()=>{ S.som=!S.som; $('soundBtn').textContent=S.som?'♪':'×'; $('soundBtn').setAttribute('aria-label',S.som?'Som ligado':'Som desligado'); if(S.som) somOk(); };
 
 function cabecalho(){
@@ -596,11 +634,13 @@ function telaInicio(){
       <li><b>Redução</b> (<i>Reduction</i>): usar o menor número de animais que a pesquisa precisa.</li>
       <li><b>Refinamento</b> (<i>Refinement</i>): cuidar melhor dos animais para evitar dor e estresse. É isso que você vai praticar neste jogo!</li></ul>
   </div>
+  <button class="btn ghost" id="glossInicio">Glossário: palavras do biotério</button>
   <button class="btn" id="comecar">Começar</button>
   ${LIVRE ? '<button class="btn ghost small" id="qrBtn">QR Code para outros aparelhos</button>' : ''}`;
   if (LIVRE) $('qrBtn').onclick = abrirQR;
   main.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ S.genero=b.dataset.g; S.nome=$('nome').value; telaInicio(); });
   $('sortear').onclick=()=>{ S.ap=sortearAparencia(); S.nome=$('nome').value; telaInicio(); };
+  $('glossInicio').onclick=abrirGlossario;
   $('comecar').onclick=()=>{ S.nome=$('nome').value.trim(); somOk(); irEPI(); };
 }
 
