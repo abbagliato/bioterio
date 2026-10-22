@@ -17,7 +17,9 @@ No final, a criança baixa um certificado em imagem com o nome e a pontuação.
 
 ## QR Code
 
-Na tela inicial, o botão "QR Code para outros aparelhos" gera um convite. Cada QR Code vale para uma partida por aparelho (o controle fica no navegador de cada aparelho).
+O jogo só abre pelo QR Code, que aponta para `https://abbagliato.github.io/bioterio/#jogar`. Cada leitura vale para uma partida: ao terminar, recarregar ou fechar a página, é preciso escanear de novo. Nada fica salvo no celular.
+
+Para mostrar o QR Code numa tela (por exemplo, num computador no estande), abra `https://abbagliato.github.io/bioterio/#organizador`.
 
 ## Ajustes
 

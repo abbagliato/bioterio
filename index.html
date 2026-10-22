@@ -393,10 +393,9 @@ function render(){
   cabecalho();
   ({ inicio:telaInicio, epi:telaEPI, montar:telaMontar, gerenciar:telaGerenciar, separar:telaSeparar, fimFase:telaFimFase, final:telaFinal, bloqueado:telaBloqueado })[S.tela]();
   window.scrollTo(0,0);
-  salvarPartida();
 }
 
-// ---------- CONVITE POR QR CODE (uma partida por aparelho) ----------
+// ---------- ACESSO PELO QR CODE ----------
 // Endereço usado no QR Code. Deixe vazio para usar automaticamente o endereço onde o jogo está hospedado.
 const SITE_URL = '';
 const ARTEFATO_URL = SITE_URL
@@ -414,21 +413,22 @@ const baixarDireto = { save: async ({filename, data}) => {
   a.href = u; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(u), 5000); return {status:'saved'};
 }};
-const CONVITE = /^c-[a-z0-9]{6,16}$/.test(location.hash.slice(1)) ? location.hash.slice(1) : null;
-const LS = {
-  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
-  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
-};
-const usados = () => LS.get('bioterio-convites-usados') || [];
-function conviteUsado(){ return !!CONVITE && usados().includes(CONVITE); }
-function marcarConvite(){ if (CONVITE && !conviteUsado()) LS.set('bioterio-convites-usados', usados().concat(CONVITE)); }
-function salvarPartida(){ if (CONVITE && conviteUsado()) LS.set('bioterio-partida-'+CONVITE, {S,B}); }
+// Acesso: no site publicado, o jogo só abre pelo QR Code (#jogar). Nada fica salvo no aparelho.
+// No arquivo local e dentro do Claude o jogo abre livre, para testes.
+const LIVRE = location.protocol === 'file:' || /claude|anthropic/.test(location.hostname);
+const HASH = location.hash.slice(1);
+const ACESSO_OK = LIVRE || /^(jogar|c-[a-z0-9]{6,16})$/.test(HASH);
+const ORGANIZADOR = !LIVRE && HASH === 'organizador';
+// Tira o código do endereço: recarregar a página exige escanear de novo
+if (!LIVRE && HASH) { try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){} }
 
 function telaBloqueado(){
-  main.innerHTML = `<div class="card" style="display:flex;flex-direction:column;gap:10px;text-align:center;align-items:center">
-    <span class="tag">Convite já usado</span>
-    <h2 style="font-size:26px">Este QR Code já foi usado neste aparelho</h2>
-    <p class="lead">Cada convite vale para uma partida. Peça um novo QR Code ao educador ou à educadora.</p></div>`;
+  const fim = S.encerrado;
+  main.innerHTML = `<div class="card" style="display:flex;flex-direction:column;gap:12px;text-align:center;align-items:center">
+    <div style="width:110px">${avatarSVG(S.genero,S.ap,!!fim)}</div>
+    <span class="tag">${fim ? 'Partida encerrada' : 'Cuidador(a) do Biotério'}</span>
+    <h2 style="font-size:26px">${fim ? 'Obrigado por cuidar dos animais!' : 'Escaneie o QR Code para jogar'}</h2>
+    <p class="lead">${fim ? 'Para jogar de novo, escaneie o QR Code com a câmera do celular.' : 'Aponte a câmera do celular para o QR Code do jogo. Cada vez que o jogo termina ou a página é recarregada, é preciso escanear de novo.'}</p></div>`;
 }
 
 function novoToken(){
@@ -439,17 +439,16 @@ function abrirQR(){
   if (!ARTEFATO_URL) return abrirModal(`<span class="tag">QR Code</span><h2>Hospede o jogo primeiro</h2>
     <p class="lead">O jogo foi aberto direto do arquivo, então não há um endereço para o QR Code. Coloque o arquivo num site (ou preencha SITE_URL no código) e abra por lá.</p>
     <button class="btn" onclick="fecharModal()">Entendi</button>`);
-  const url = ARTEFATO_URL + '#' + novoToken();
+  const url = ARTEFATO_URL + '#jogar';
   abrirModal(`<span class="tag">Para o educador ou a educadora</span><h2>QR Code de convite</h2>
-    <p class="lead">A criança escaneia com a câmera do celular. Cada QR Code vale para <b>uma partida</b> em cada aparelho. Gere um novo para cada criança.</p>
+    <p class="lead">A criança escaneia com a câmera do celular. Cada leitura vale para <b>uma partida</b>: ao terminar, recarregar ou fechar, é preciso escanear de novo.</p>
     <div class="qr" id="qrBox"></div>
     <p class="link" id="qrLink"></p>
-    <div class="row"><button class="btn ghost" id="qrCopiar">Copiar link</button><button class="btn" id="qrNovo">Gerar outro</button></div>
+    <button class="btn ghost" id="qrCopiar">Copiar link</button>
     <button class="btn ghost" onclick="fecharModal()">Fechar</button>`);
   $('qrLink').textContent = url;
   try{ new QRCode($('qrBox'), { text:url, width:480, height:480, colorDark:'#1D3340', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M }); }
   catch(e){ $('qrBox').textContent = 'Não foi possível desenhar o QR Code agora. Use o link abaixo.'; }
-  $('qrNovo').onclick = abrirQR;
   $('qrCopiar').onclick = () => {
     const sel = () => { const r=document.createRange(); r.selectNodeContents($('qrLink')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); aviso('Link selecionado. Copie pelo menu do aparelho.'); };
     try{ navigator.clipboard.writeText(url).then(()=>aviso('Link copiado!','ok'), sel); }catch(e){ sel(); }
@@ -536,11 +535,11 @@ function telaInicio(){
     <ul class="list"><li><b>Substituir</b> o uso de animais quando der.</li><li><b>Reduzir</b> o número de animais.</li><li><b>Refinar</b> o cuidado para eles viverem bem.</li></ul>
   </div>
   <button class="btn" id="comecar">Começar</button>
-  ${CONVITE ? '' : '<button class="btn ghost small" id="qrBtn">QR Code para outros aparelhos</button>'}`;
-  if (!CONVITE) $('qrBtn').onclick = abrirQR;
+  ${LIVRE ? '<button class="btn ghost small" id="qrBtn">QR Code para outros aparelhos</button>' : ''}`;
+  if (LIVRE) $('qrBtn').onclick = abrirQR;
   main.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ S.genero=b.dataset.g; S.nome=$('nome').value; telaInicio(); });
   $('sortear').onclick=()=>{ S.ap=sortearAparencia(); S.nome=$('nome').value; telaInicio(); };
-  $('comecar').onclick=()=>{ S.nome=$('nome').value.trim(); somOk(); marcarConvite(); irEPI(); };
+  $('comecar').onclick=()=>{ S.nome=$('nome').value.trim(); somOk(); irEPI(); };
 }
 
 // ---------- EPI (antes de cada fase) ----------
@@ -913,7 +912,7 @@ function telaFinal(){
     </ul></div>
   <button class="btn" id="baixar" hidden>Baixar certificado</button>
   <p class="lead" id="semDownload" hidden style="text-align:center">Para guardar o certificado, tire um print desta tela.</p>
-  ${CONVITE ? '<p class="lead" style="text-align:center">Este convite já foi usado. Para jogar de novo, peça um novo QR Code.</p>' : '<button class="btn ghost" id="denovo">Jogar de novo</button>'}`;
+  ${LIVRE ? '<button class="btn ghost" id="denovo">Jogar de novo</button>' : '<button class="btn ghost" id="encerrar">Encerrar partida</button>'}`;
   main.querySelector('.name').textContent = nome;
   Promise.resolve(window.claude?.use ? window.claude.use('downloads') : null).catch(()=>null).then(d=>{
     if (!$('baixar')) return;
@@ -921,7 +920,7 @@ function telaFinal(){
     if (d){ $('baixar').hidden=false; $('baixar').onclick=()=>baixarCertificado(d); }
     else $('semDownload').hidden=false;
   });
-  if (CONVITE) return;
+  if (!LIVRE){ $('encerrar').onclick=()=>{ S={...novoEstado(), genero:S.genero, ap:S.ap, encerrado:true, tela:'bloqueado'}; B=null; render(); }; return; }
   $('denovo').onclick=()=>{ const n=S.nome, gn=S.genero, som=S.som; S=novoEstado(); S.nome=n; S.genero=gn; S.som=som; B=null; render(); };
 }
 
@@ -929,11 +928,9 @@ function telaFinal(){
 window.claude?.hot?.snapshot?.(()=>({S,B}));
 const iniciar = d => {
   if (d && d.S){ S=d.S; B=d.B; }
-  else if (conviteUsado()){
-    const p = LS.get('bioterio-partida-'+CONVITE);
-    if (p && p.S){ S=p.S; B=p.B; } else S.tela='bloqueado';   // retoma a partida deste convite ou bloqueia
-  }
+  else if (!ACESSO_OK) S.tela='bloqueado';   // sem QR Code: pede para escanear
   render();
+  if (ORGANIZADOR) abrirQR();                 // endereço #organizador mostra o QR Code do jogo
 };
 window.claude?.hot?.ready ? window.claude.hot.ready(iniciar) : iniciar(window.claude?.hot?.data ?? {});
 </script>
