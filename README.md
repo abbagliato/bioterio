@@ -9,7 +9,7 @@ Jovem Bioterista é um jogo educativo para celular que ensina às crianças a ro
 1. Vestir o EPI na ordem certa (lavar as mãos esfregando o dedo na tela, propé, jaleco, touca, máscara, óculos e luvas).
 2. Montar a gaiola microisoladora: maravalha, enriquecimento (ninho, rolo ou iglu), animais, grade, água, ração e tampa.
 3. Formar o grupo de reprodução com 1 macho e 1 ou 2 fêmeas.
-4. Repor ração e água e trocar a gaiola suja.
+4. Trocar a gaiola a cada 7 dias (maravalha, água e ração novas) e repor ração e água quando baixarem.
 5. Desmamar os filhotes aos 21 dias, separando machos e fêmeas.
 6. Cuidar de várias gaiolas ao mesmo tempo.
 
