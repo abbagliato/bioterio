@@ -201,8 +201,8 @@ p{margin:0}
   .mini{grid-template-columns:minmax(0,1fr);gap:8px;padding:12px}
   .mini .meter{font-size:12px} .mini .actions .btn{min-height:40px;font-size:14px}
   /* telas de texto: uma coluna centralizada */
-  .screen[data-tela="fimFase"],.screen[data-tela="final"],.screen[data-tela="bloqueado"]{grid-template-columns:minmax(0,640px);justify-content:center}
-  .screen[data-tela="fimFase"]>*,.screen[data-tela="final"]>*,.screen[data-tela="bloqueado"]>*{grid-column:1}
+  .screen[data-tela="fimFase"],.screen[data-tela="final"],.screen[data-tela="bloqueado"],.screen[data-tela="gameover"]{grid-template-columns:minmax(0,640px);justify-content:center}
+  .screen[data-tela="fimFase"]>*,.screen[data-tela="final"]>*,.screen[data-tela="bloqueado"]>*,.screen[data-tela="gameover"]>*{grid-column:1}
   .modal{align-items:center}
   .modal .sheet{border-radius:22px;max-width:620px;padding-bottom:22px}
 }
@@ -483,7 +483,7 @@ function cabecalho(){
 function render(){
   cabecalho();
   main.dataset.tela = S.tela;
-  ({ inicio:telaInicio, epi:telaEPI, montar:telaMontar, gerenciar:telaGerenciar, separar:telaSeparar, fimFase:telaFimFase, final:telaFinal, bloqueado:telaBloqueado })[S.tela]();
+  ({ inicio:telaInicio, epi:telaEPI, montar:telaMontar, gerenciar:telaGerenciar, separar:telaSeparar, fimFase:telaFimFase, final:telaFinal, bloqueado:telaBloqueado, gameover:telaFimDeJogo })[S.tela]();
   window.scrollTo(0,0);
 }
 
@@ -732,8 +732,10 @@ function telaEPI(){
 // ---------- FASES ----------
 function iniciarFase(){
   const f=S.fase;
+  // guarda como tudo estava no começo da fase, para poder tentar de novo depois de um fim de jogo
+  S.snap = JSON.stringify({ gaiolas:S.gaiolas, pontos:S.pontos, filhotes:S.filhotes });
   if (f===1) return novaMontagem({destino:'f1', titulo:'Sua primeira gaiola', modo:'inicial'});
-  if (f===2){ zerarRelogio(); S.turno=0; S.trocas=0; S.tela='gerenciar'; render(); return aviso('Cuide da gaiola a cada dia: ração, água e limpeza.'); }
+  if (f===2){ zerarRelogio(); S.turno=0; S.trocas=0; S.tela='gerenciar'; render(); return aviso('Atenção: se a ração, a água ou a limpeza de uma gaiola chegar a zero, o jogo acaba!'); }
   if (f===3){
     const c=S.gaiolas[0].g; S.idadeFilhotes=0; S.turno=0; S.desmameFeito=false; zerarRelogio();
     if (!c.enriq.includes('ninho')) c.enriq.push('ninho');
@@ -745,7 +747,7 @@ function iniciarFase(){
   if (f===4){ S.separacao={ fila:S.filhotes.map(p=>({...p, ocultarSexo:false})), M:[], F:[] }; S.tela='separar'; render(); return; }
   if (f===5){
     S.turno=0; zerarRelogio();
-    S.gaiolas.forEach((x,i)=>{ x.g.racao=clamp(60+i*15); x.g.agua=clamp(85-i*20); x.g.sujeira=clamp(25+i*15); });
+    S.gaiolas.forEach((x,i)=>{ x.g.racao=clamp(100-i*10); x.g.agua=clamp(100-i*5); x.g.sujeira=clamp(5+i*10); });
     S.tela='gerenciar'; render();
     return aviso('Agora são 3 gaiolas! Observe as barras de cada uma.');
   }
@@ -976,6 +978,9 @@ function avancarTempo(){
     else if (g.racao<25) alertas.push(`${x.nome}: o comedouro está quase vazio.`);
     else if (g.sujeira>75) alertas.push(`${x.nome}: a gaiola está muito suja. Hora de trocar.`);
   });
+  // FIM DE JOGO: ração, água ou limpeza de alguma gaiola chegou a zero
+  const zerada = S.gaiolas.find(x => x.g.agua<=0 || x.g.racao<=0 || x.g.sujeira>=100);
+  if (zerada){ const g=zerada.g; return fimDeJogo(zerada.nome, g.agua<=0 ? 'agua' : g.racao<=0 ? 'racao' : 'limpeza'); }
   if (alertas.length){ pontos(CFG.pontos.alerta*alertas.length); somErro(); }
 
   if (f===2 && S.turno>=CFG.turnosRotina){
@@ -1029,6 +1034,36 @@ function telaSeparar(){
 }
 
 // ---------- FIM DE FASE ----------
+// ---------- FIM DE JOGO ----------
+const MOTIVOS = {
+  agua:    { titulo:'A água acabou', texto:'O bebedouro ficou vazio. Camundongos precisam de água fresca o tempo todo.', dica:'Toque em "Água" sempre que a barra de água começar a baixar.' },
+  racao:   { titulo:'A ração acabou', texto:'O comedouro ficou vazio. Camundongos comem um pouquinho várias vezes por dia e a ração não pode faltar.', dica:'Toque em "Ração" antes de a barra ficar vermelha.' },
+  limpeza: { titulo:'A gaiola ficou suja demais', texto:'A maravalha ficou muito suja e úmida, e isso faz mal aos animais.', dica:'Toque em "Trocar" a cada 7 dias para montar uma gaiola limpa.' }
+};
+function fimDeJogo(nomeGaiola, motivo){ S.gameOver = { nome:nomeGaiola, motivo }; S.tela = 'gameover'; somErro(); render(); }
+function telaFimDeJogo(){
+  const m = MOTIVOS[S.gameOver.motivo];
+  main.innerHTML = `
+  <div class="card" style="display:flex;flex-direction:column;gap:12px;text-align:center;align-items:center">
+    <span class="tag" style="color:var(--bad)">Fim de jogo</span>
+    <h2 style="font-size:28px">${m.titulo}</h2>
+    <p><b>${S.gameOver.nome}:</b> ${m.texto}</p>
+    <p class="lead">A equipe do biotério veio ajudar e os animais já estão bem cuidados. Mas desta vez a fase acabou.</p>
+  </div>
+  <div class="card" style="display:flex;flex-direction:column;gap:8px">
+    <h3>Dica para a próxima vez</h3>
+    <p>${m.dica}</p>
+    <p class="lead">No biotério, os animais dependem do bioterista todos os dias. Por isso ele confere ração, água e limpeza de cada gaiola sempre.</p>
+  </div>
+  <button class="btn" id="tentar">Tentar esta fase de novo</button>
+  <button class="btn ghost" id="reiniciar">Começar o jogo do início</button>`;
+  $('tentar').onclick = () => {
+    const s = JSON.parse(S.snap); S.gaiolas = s.gaiolas; S.pontos = s.pontos; S.filhotes = s.filhotes; S.gameOver = null;
+    iniciarFase();
+  };
+  $('reiniciar').onclick = () => { const n=S.nome, gn=S.genero, ap=S.ap, som=S.som; S=novoEstado(); Object.assign(S,{nome:n, genero:gn, ap, som}); B=null; render(); };
+}
+
 function fimFase(aprendeu){ S.resumo=aprendeu; S.tela='fimFase'; somFesta(); render(); }
 function telaFimFase(){
   const f=S.fase;

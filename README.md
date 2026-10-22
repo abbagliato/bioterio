@@ -13,6 +13,8 @@ Jovem Bioterista é um jogo educativo para celular que ensina às crianças a ro
 5. Desmamar os filhotes aos 21 dias, separando machos e fêmeas.
 6. Cuidar de várias gaiolas ao mesmo tempo.
 
+Se a ração, a água ou a limpeza de uma gaiola chegar a zero, é fim de jogo: a criança vê o que aconteceu, recebe uma dica e pode tentar a fase de novo.
+
 O botão "Glossário" explica 31 palavras do biotério (EPI, enriquecimento ambiental, 3Rs, desmame e outras), com busca.
 
 No final, a criança baixa um certificado em imagem com o nome e a pontuação.
