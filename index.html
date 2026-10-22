@@ -132,6 +132,15 @@ p{margin:0}
 .clock .bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .25s linear}
 .clock .btn{min-height:36px;font-size:14px;padding:0 12px;box-shadow:0 2px 0 var(--line)}
 
+/* impressão do certificado (folha A4 deitada) */
+#printCert{display:none}
+@page{size:A4 landscape;margin:0}
+@media print{
+  body{background:#fff} body::before{display:none}
+  body *{visibility:hidden}
+  #printCert{display:block!important;visibility:visible;position:fixed;left:0;top:0;width:297mm;height:210mm;max-width:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
 /* QR code */
 .qr{display:grid;place-items:center;background:#FFFFFF;border-radius:16px;padding:14px;border:2px solid var(--line)}
 .qr img,.qr canvas{width:240px;max-width:100%;height:auto}
@@ -458,7 +467,9 @@ const baixarDireto = { save: async ({filename, data}) => {
 }};
 // Acesso: no site publicado, o jogo só abre pelo QR Code (#jogar). Nada fica salvo no aparelho.
 // No arquivo local e dentro do Claude o jogo abre livre, para testes.
-const LIVRE = location.protocol === 'file:' || /claude|anthropic/.test(location.hostname);
+// Versão de computador: aberta do pendrive (arquivo) ou pelo servidor local
+const DESKTOP = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const LIVRE = DESKTOP || /claude|anthropic/.test(location.hostname);
 const HASH = location.hash.slice(1);
 const ACESSO_OK = LIVRE || /^(jogar|c-[a-z0-9]{6,16})$/.test(HASH);
 const ORGANIZADOR = !LIVRE && HASH === 'organizador';
@@ -999,14 +1010,23 @@ function telaFinal(){
       <li>Vestir o EPI na ordem certa.</li>
       <li>Montar a gaiola: maravalha, enriquecimento, animais, grade, água, ração e tampa.</li>
       <li>Formar o grupo de reprodução com 1 macho e 1 ou 2 fêmeas.</li>
-      <li>Repor ração e água e trocar a gaiola quando está suja.</li>
+      <li>Trocar a gaiola a cada 7 dias, com maravalha, água e ração novas.</li>
       <li>Desmamar os filhotes aos 21 dias, separando machos e fêmeas.</li>
     </ul></div>
-  <button class="btn" id="baixar" hidden>Baixar certificado</button>
-  <p class="lead" id="semDownload" hidden style="text-align:center">Para guardar o certificado, tire um print desta tela.</p>
+  ${DESKTOP ? `<div class="card" style="display:flex;flex-direction:column;gap:12px">
+    <h3>Seu certificado</h3>
+    <label class="field" for="nmCert">Nome no certificado<input id="nmCert" maxlength="30" autocomplete="off" placeholder="Digite seu nome"></label>
+    <button class="btn" id="imprimir">Imprimir certificado</button>
+    <label class="field" for="emCert">Receber por e-mail<input id="emCert" type="email" inputmode="email" autocomplete="email" placeholder="seuemail@exemplo.com"></label>
+    <div class="row"><button class="btn ghost" id="mailSrv">Enviar automático</button><button class="btn ghost" id="mailGmail">Abrir no Gmail</button></div>
+    <button class="btn ghost small" id="pdfA4">Baixar PDF (A4)</button>
+    <p class="lead" style="font-size:14px">"Enviar automático" usa o servidor de e-mails do pendrive (abra o jogo pelo iniciar-jovem-bioterista.bat). "Abrir no Gmail" baixa o PDF e abre o e-mail pronto: é só anexar o arquivo e enviar.</p>
+  </div>` : `<button class="btn" id="baixar" hidden>Baixar certificado</button>
+  <p class="lead" id="semDownload" hidden style="text-align:center">Para guardar o certificado, tire um print desta tela.</p>`}
   ${LIVRE ? '<button class="btn ghost" id="denovo">Jogar de novo</button>' : '<button class="btn ghost" id="encerrar">Encerrar partida</button>'}`;
   main.querySelector('.name').textContent = nome;
-  Promise.resolve(window.claude?.use ? window.claude.use('downloads') : null).catch(()=>null).then(d=>{
+  if (DESKTOP) ligarCertificadoDesktop();
+  else Promise.resolve(window.claude?.use ? window.claude.use('downloads') : null).catch(()=>null).then(d=>{
     if (!$('baixar')) return;
     if (!d && !window.claude) d = baixarDireto;   // fora do Claude: download pelo navegador
     if (d){ $('baixar').hidden=false; $('baixar').onclick=()=>baixarCertificado(d); }
@@ -1014,6 +1034,101 @@ function telaFinal(){
   });
   if (!LIVRE){ $('encerrar').onclick=()=>{ S={...novoEstado(), genero:S.genero, ap:S.ap, encerrado:true, tela:'bloqueado'}; B=null; render(); }; return; }
   $('denovo').onclick=()=>{ const n=S.nome, gn=S.genero, som=S.som; S=novoEstado(); S.nome=n; S.genero=gn; S.som=som; B=null; render(); };
+}
+
+// ---------- CERTIFICADO NO COMPUTADOR: impressão A4, PDF e e-mail ----------
+const SERVIDOR_EMAIL = location.protocol === 'file:' ? 'http://localhost:3000/api/enviar-certificado' : '/api/enviar-certificado';
+const escHTML = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const slug = n => (n.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'participante');
+const arquivoPDF = n => `certificado-jovem-bioterista-${slug(n)}.pdf`;
+function caixaInfo(titulo, texto){ abrirModal(`<h2>${titulo}</h2><p>${texto}</p><button class="btn" onclick="fecharModal()">Ok</button>`); }
+
+async function certCanvasA4(nome){                // folha A4 deitada: 297 x 210 mm (1754 x 1240 px)
+  try{ await document.fonts.ready; }catch(e){}
+  const W=1754, H=1240, c=document.createElement('canvas'); c.width=W; c.height=H;
+  const x=c.getContext('2d'), DISP='"Baloo 2", "Trebuchet MS", sans-serif', CORPO='Nunito, "Segoe UI", sans-serif';
+  x.fillStyle='#E7F2EF'; x.fillRect(0,0,W,H);
+  x.fillStyle='#FFFFFF'; caixa(x,46,46,W-92,H-92,44); x.fill();
+  x.strokeStyle='#1F8A84'; x.lineWidth=12; caixa(x,46,46,W-92,H-92,44); x.stroke();
+  x.lineWidth=4; caixa(x,76,76,W-152,H-152,32); x.stroke();
+  try{
+    const svg = avatarSVG(S.genero,S.ap,true).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ');
+    const img = await carregarImg('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg));
+    x.drawImage(img, W/2-105, 105, 210, 245);
+  }catch(e){}
+  x.textAlign='center';
+  x.fillStyle='#1F8A84'; x.font=`800 34px ${CORPO}`; x.fillText('C E R T I F I C A D O', W/2, 410);
+  x.fillStyle='#1D3340'; x.font=`800 100px ${DISP}`; x.fillText('Jovem Bioterista', W/2, 510);
+  x.fillStyle='#587080'; x.font=`600 46px ${CORPO}`; x.fillText('Certificamos que', W/2, 590);
+  x.fillStyle='#1F8A84'; caber(x,nome,800,110,DISP,1300); x.fillText(nome, W/2, 710);
+  x.strokeStyle='#C7DCD7'; x.lineWidth=4; x.beginPath(); x.moveTo(330,745); x.lineTo(W-330,745); x.stroke();
+  x.fillStyle='#1D3340'; x.font=`600 44px ${CORPO}`;
+  quebrar(x,'concluiu as 5 fases do jogo cuidando dos animais do biotério com responsabilidade e respeito ao bem-estar animal.',1300)
+    .forEach((l,i)=>x.fillText(l, W/2, 825+i*60));
+  x.fillStyle='#1F8A84'; x.font=`800 76px ${DISP}`; x.fillText(`${S.pontos} pontos`, W/2, 1035);
+  x.fillStyle='#587080'; x.font=`600 38px ${CORPO}`;
+  x.fillText(new Date().toLocaleDateString('pt-BR',{day:'numeric',month:'long',year:'numeric'}), W/2, 1100);
+  return c;
+}
+function canvasParaPDF(cv){                       // PDF de 1 página A4 deitada com a imagem do certificado
+  const bin = atob(cv.toDataURL('image/jpeg', 0.92).split(',')[1]);
+  const jpg = Uint8Array.from(bin, ch => ch.charCodeAt(0)), enc = new TextEncoder(), parts = [], off = [];
+  let len = 0;
+  const push = b => { const u = typeof b === 'string' ? enc.encode(b) : b; parts.push(u); len += u.length; };
+  const obj = (n, fn) => { off[n] = len; push(`${n} 0 obj\n`); fn(); push('\nendobj\n'); };
+  const cs = 'q 842 0 0 595 0 0 cm /Im0 Do Q';
+  push('%PDF-1.4\n');
+  obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
+  obj(2, () => push('<< /Type /Pages /Kids [3 0 R] /Count 1 >>'));
+  obj(3, () => push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>'));
+  obj(4, () => { push(`<< /Type /XObject /Subtype /Image /Width ${cv.width} /Height ${cv.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`); push(jpg); push('\nendstream'); });
+  obj(5, () => push(`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`));
+  const xref = len; push('xref\n0 6\n0000000000 65535 f \n');
+  for (let i = 1; i <= 5; i++) push(String(off[i]).padStart(10, '0') + ' 00000 n \n');
+  push(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(parts, { type: 'application/pdf' });
+}
+function salvarArquivo(blob, nome){
+  const a=document.createElement('a'); a.download=nome; a.href=URL.createObjectURL(blob);
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+function ligarCertificadoDesktop(){
+  const nomeAtual = () => $('nmCert').value.trim() || 'Jovem Bioterista';
+  const emailOk = () => { const e=$('emCert').value.trim(); if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return e; $('emCert').focus(); aviso('Digite um e-mail válido para continuar.','err'); return null; };
+  $('nmCert').value = S.nome;
+  $('nmCert').oninput = () => { S.nome = $('nmCert').value.trim(); main.querySelector('.name').textContent = nomeAtual(); };
+  $('imprimir').onclick = async () => {
+    const cv = await certCanvasA4(nomeAtual());
+    let im = $('printCert'); if (!im){ im=document.createElement('img'); im.id='printCert'; im.alt='Certificado'; document.body.appendChild(im); }
+    im.onload = () => window.print(); im.src = cv.toDataURL('image/png');
+  };
+  $('pdfA4').onclick = async () => { const n=nomeAtual(); salvarArquivo(canvasParaPDF(await certCanvasA4(n)), arquivoPDF(n)); aviso('PDF baixado na pasta Downloads.','ok'); };
+  $('mailGmail').onclick = async () => {
+    const email = emailOk(); if (!email) return;
+    const n = nomeAtual(), arq = arquivoPDF(n);
+    salvarArquivo(canvasParaPDF(await certCanvasA4(n)), arq);
+    const assunto = 'Parabéns! Você ganhou seu certificado de Jovem Bioterista 🏅';
+    const corpo = `Parabéns, ${n}!\n\nVocê ganhou seu certificado de Jovem Bioterista! 🏅\n\nVocê concluiu o jogo com ${S.pontos} pontos e mostrou que sabe cuidar bem dos camundongos do biotério.\n\nO seu certificado está no arquivo "${arq}" (PDF, folha A4). Anexe-o a esta mensagem antes de enviar.\n\nBom trabalho! 🐭`;
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`, '_blank');
+    caixaInfo('E-mail aberto', `O certificado foi baixado como <b>${escHTML(arq)}</b> (pasta Downloads). No e-mail, clique no clipe, escolha esse arquivo e envie.`);
+  };
+  $('mailSrv').onclick = async () => {
+    const email = emailOk(); if (!email) return;
+    const btn = $('mailSrv'); btn.disabled = true; btn.textContent = 'Enviando...';
+    try{
+      const pdf = canvasParaPDF(await certCanvasA4(nomeAtual()));
+      const b64 = await new Promise((ok, err) => { const f = new FileReader(); f.onload = () => ok(String(f.result).split(',')[1]); f.onerror = err; f.readAsDataURL(pdf); });
+      const r = await fetch(SERVIDOR_EMAIL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nome:nomeAtual(), email, pontos:S.pontos, pdf:b64 }) });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.erro || 'falha');
+      somFesta();
+      if (j.simulado) caixaInfo('Servidor em modo de teste', 'O servidor recebeu o pedido, mas ainda não tem a senha do e-mail (SMTP) configurada, então <b>nenhum e-mail foi enviado de verdade</b>. Veja o README da pasta servidor_py.');
+      else caixaInfo('Enviado!', `O certificado foi enviado para <b>${escHTML(email)}</b>. Se não chegar, olhe a caixa de spam.`);
+    }catch(e){
+      caixaInfo('Não consegui enviar automaticamente', 'O servidor de e-mails não está ligado ou o Gmail recusou a senha. Abra o jogo pelo <b>iniciar-jovem-bioterista.bat</b> ou use o botão <b>Abrir no Gmail</b>, que abre o e-mail pronto e baixa o PDF para anexar.');
+    }
+    btn.disabled = false; btn.textContent = 'Enviar automático';
+  };
 }
 
 // ---------- INÍCIO ----------
