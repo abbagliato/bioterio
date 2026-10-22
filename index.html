@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Jogo educativo: aprenda a rotina de cuidado dos camundongos no biotério.">
+<style>*,*::before,*::after{box-sizing:border-box}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
+<title>Cuidador do Biotério</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* Layout: app de uma tela para celular — cabeçalho fixo, gaiola no centro, bandeja de itens embaixo.
+   Visual único e claro ("sala limpa" do biotério), escolhido de propósito para os dois temas. */
+:root{
+  --bg:#E7F2EF; --panel:#FFFFFF; --ink:#1D3340; --muted:#587080;
+  --accent:#1F8A84; --accent-ink:#FFFFFF; --soft:#D3EAE5; --line:#C7DCD7;
+  --saw:#E6BE63; --saw-dark:#B98E35; --dirt:#7A5B33;
+  --good:#2F9A55; --warn:#D9822B; --bad:#C2453B;
+  --display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --body:"Nunito","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
+  -webkit-tap-highlight-color:transparent;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--panel)}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;touch-action:manipulation}
+button:focus-visible,input:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);line-height:1.1;margin:0;text-wrap:balance}
+p{margin:0}
+.app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* cabeçalho */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--panel);border-bottom:2px solid var(--line);
+  display:flex;align-items:center;gap:8px;padding-block:8px}
+.top .phase{flex:1;min-width:0}
+.top .phase small{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.top .phase b{font-family:var(--display);font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.pts{font-family:var(--display);font-size:18px;background:var(--soft);border-radius:999px;padding:2px 12px;font-variant-numeric:tabular-nums}
+.icon-btn{width:40px;height:40px;border-radius:12px;background:var(--soft);display:grid;place-items:center;font-weight:800;font-size:18px}
+
+/* telas */
+.screen{flex:1;display:flex;flex-direction:column;gap:14px;padding-block:14px 24px}
+.card{background:var(--panel);border-radius:18px;padding:16px;border:2px solid var(--line)}
+.lead{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 20px;border-radius:16px;
+  background:var(--accent);color:var(--accent-ink);font-family:var(--display);font-size:20px;box-shadow:0 4px 0 #156560}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #156560}
+.btn.ghost{background:var(--soft);color:var(--ink);box-shadow:0 4px 0 var(--line)}
+.btn.small{min-height:42px;font-size:16px;padding:0 14px}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>.btn{flex:1;font-size:17px;white-space:nowrap;padding:0 10px}
+
+/* personagem */
+.hero{display:flex;gap:14px;align-items:center}
+.avatar{width:110px;flex:none}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg button{min-height:48px;border-radius:14px;background:var(--soft);font-weight:800;border:2px solid transparent}
+.seg button[aria-pressed="true"]{background:var(--panel);border-color:var(--accent);color:var(--accent)}
+.field{display:flex;flex-direction:column;gap:6px;font-weight:800}
+.field input{min-height:48px;border-radius:14px;border:2px solid var(--line);padding:0 14px;font:inherit;background:var(--panel);color:var(--ink)}
+
+/* gaiola */
+.stage{background:var(--panel);border-radius:20px;border:2px solid var(--line);padding:10px;position:relative}
+.stage svg{display:block;width:100%;height:auto;max-width:100%}
+.cage-title{font-family:var(--display);font-size:17px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.cage-title span{font-family:var(--body);font-size:13px;color:var(--muted);font-weight:800}
+
+/* etapas */
+.steps{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.steps::-webkit-scrollbar{display:none}
+.chip{flex:none;font-size:13px;font-weight:800;padding:5px 10px;border-radius:999px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.chip.done{background:var(--good);color:#fff}
+.chip.now{background:var(--warn);color:#fff;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.06)}}
+
+/* bandeja */
+.tray{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.item{background:var(--panel);border:2px solid var(--line);border-radius:16px;min-height:86px;padding:6px 4px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12.5px;font-weight:800;text-align:center;line-height:1.15}
+.item svg{width:40px;height:40px}
+.item:active{transform:scale(.95)}
+.item.used{opacity:.35}
+.item.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* indicadores */
+.meters{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 12px}
+.meter{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:800;color:var(--muted)}
+.meter .bar{height:10px;border-radius:999px;background:var(--soft);overflow:hidden}
+.meter .bar i{display:block;height:100%;border-radius:999px;transition:width .4s}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.actions .btn{font-size:15px;min-height:48px;padding:0 6px}
+
+/* animais para escolher */
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pick button{border:2px solid var(--line);border-radius:16px;padding:6px;background:var(--panel);font-weight:800;font-size:13px}
+.pick button[aria-pressed="true"]{border-color:var(--accent);background:var(--soft)}
+.pick svg{width:100%;height:auto}
+
+/* mensagens */
+.toast{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:12px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  transform:translateY(110%);transition:transform .25s}
+.toast.show{transform:none}
+.toast div{max-width:528px;margin:0 auto;border-radius:16px;padding:12px 14px;font-weight:700;color:#fff;background:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;gap:10px}
+.toast.ok div{background:var(--good)} .toast.err div{background:var(--warn)}
+.modal{position:fixed;inset:0;z-index:30;background:rgba(20,40,50,.5);display:flex;align-items:flex-end;justify-content:center}
+.modal .sheet{background:var(--panel);width:100%;max-width:560px;max-height:85%;overflow:auto;border-radius:22px 22px 0 0;
+  padding:18px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.gloss dt{font-family:var(--display);font-size:18px;color:var(--accent)}
+.gloss dd{margin:0 0 10px}
+.list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.tag{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+
+/* certificado */
+.cert{border:4px double var(--accent);border-radius:20px;background:var(--panel);padding:20px 16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
+.cert h2{font-size:26px}
+.cert .name{font-family:var(--display);font-size:28px;color:var(--accent);border-bottom:2px solid var(--line);padding:0 12px}
+.big{font-family:var(--display);font-size:40px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+/* QR code */
+.qr{display:grid;place-items:center;background:#FFFFFF;border-radius:16px;padding:14px;border:2px solid var(--line)}
+.qr img,.qr canvas{width:240px;max-width:100%;height:auto}
+.link{font-size:12px;word-break:break-all;color:var(--muted);user-select:all;-webkit-user-select:all}
+
+/* lavagem das mãos */
+.rub{position:relative;background:var(--soft);border:2px dashed var(--accent);border-radius:18px;touch-action:none;user-select:none;-webkit-user-select:none}
+.rub svg{display:block;width:100%;height:auto;pointer-events:none}
+.rub span{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-weight:800;color:var(--accent);pointer-events:none}
+
+/* várias gaiolas na mesma tela */
+.multi-wrap{display:flex;flex-direction:column;gap:8px}
+.mini{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:8px;display:grid;grid-template-columns:minmax(0,44%) minmax(0,1fr);gap:4px 10px;align-items:center}
+.mini .cage-title{grid-column:1/-1;font-size:15px}
+.mini .cage-title span{font-size:11.5px}
+.mini svg{display:block;width:100%;height:auto}
+.mini .side{display:flex;flex-direction:column;gap:6px;min-width:0}
+.mini .meters{grid-template-columns:1fr 1fr;gap:3px 8px}
+.mini .meter{font-size:10.5px;gap:1px}
+.mini .meter .bar{height:7px}
+.mini .actions{gap:5px}
+.mini .actions .btn{min-height:34px;font-size:12.5px;border-radius:10px;padding:0 2px;box-shadow:0 2px 0 var(--line)}
+.screen.tight{gap:8px;padding-block:8px 16px}
+.screen.tight .card{padding:8px 12px;font-size:14px}
+
+@media (max-width:370px){.tray{grid-template-columns:repeat(3,1fr)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="app">
+  <header class="top wrap" id="top" hidden>
+    <div class="phase"><small id="phaseNum">Fase 1 de 5</small><b id="phaseName">Montar a gaiola</b></div>
+    <span class="pts" id="pts" aria-label="Pontos">0</span>
+    <button class="icon-btn" id="soundBtn" aria-label="Som ligado">♪</button>
+    <button class="icon-btn" id="glossBtn" aria-label="Abrir glossário">?</button>
+  </header>
+  <main class="wrap screen" id="main"></main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"><div><span id="toastTxt"></span></div></div>
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+
+<script>
+/* ==========================================================
+   CUIDADOR DO BIOTÉRIO — jogo educativo
+   Textos, tempos e regras ficam nas constantes abaixo.
+   ========================================================== */
+
+// ---------- CONFIGURAÇÃO (fácil de ajustar) ----------
+const CFG = {
+  pontos: { acerto: 10, erro: -3, montagemPerfeita: 20, bonusAbrigo: 5, troca: 15, trocaCedo: -2, repor: 5, alerta: -5, desmameCerto: 40, desmameErrado: -15, separarCerto: 5 },
+  diasPorTurnoFilhotes: 3,   // na fase 3 cada "avançar" pula 3 dias
+  idadeDesmame: 21,          // dias
+  turnosRotina: 4,           // fase 2
+  turnosDesafio: 5,          // fase 5
+  gasto: { racao: 22, agua: 26, sujeira: 22 } // por turno
+};
+
+// Ordem obrigatória da montagem
+const ORDEM = [
+  { id:'maravalha', nome:'Maravalha', dica:'A maravalha vai primeiro: ela forma a cama macia e absorve a umidade.' },
+  { id:'enriquecimento', nome:'Enriquecimento', dica:'Depois da maravalha vem o enriquecimento ambiental: ninho, rolo ou iglu.' },
+  { id:'animais', nome:'Animais', dica:'Os animais entram depois da cama e do enriquecimento prontos.' },
+  { id:'grade', nome:'Grade', dica:'A grade vai por cima, depois dos animais. É nela que ficam a água e a ração.' },
+  { id:'agua', nome:'Água', dica:'Com a grade no lugar, coloque o bebedouro com água fresca.' },
+  { id:'racao', nome:'Ração', dica:'A ração vai no comedouro da grade, depois da água.' },
+  { id:'tampa', nome:'Tampa', dica:'A tampa com filtro fecha a gaiola por último. Ela protege os animais de germes.' }
+];
+const ENRIQ = ['ninho','rolo','iglu'];
+
+const GLOSSARIO = [
+  ['Biotério','Lugar onde vivem e são cuidados os animais usados na pesquisa científica.'],
+  ['Microisolador','Gaiola de plástico transparente com tampa que tem filtro. O filtro deixa o ar passar e barra germes.'],
+  ['Maravalha','Raspas de madeira limpas usadas como cama. Absorvem o xixi e deixam a gaiola sequinha.'],
+  ['Enriquecimento ambiental','Objetos que deixam a vida dos animais mais interessante e confortável, como ninho, rolo e iglu.'],
+  ['Iglu','Abrigo, geralmente de plástico, onde os camundongos se escondem e descansam.'],
+  ['Ninho','Material macio, como papel ou algodão próprio, que os animais usam para montar o ninho e se aquecer.'],
+  ['Rolo','Tubo de papelão onde os camundongos passam, se escondem e roem.'],
+  ['Propé','Capa descartável que cobre os sapatos para não levar sujeira para dentro do biotério.'],
+  ['Grade','Parte de metal que fica sobre a gaiola e segura o bebedouro e a ração.'],
+  ['Desmame','Separar os filhotes da mãe quando já comem sozinhos. Nos camundongos isso acontece aos 21 dias.'],
+  ['EPI','Equipamento de Proteção Individual: propé, jaleco, touca, máscara, óculos de proteção e luvas. Protege você e os animais.'],
+  ['3Rs','Substituir animais quando possível, Reduzir o número usado e Refinar o cuidado para que tenham bem-estar.']
+];
+
+// ---------- PERSONAGEM ----------
+const ETNIAS = {
+  branca:   { nome:'branca',   pele:'#F2D1B5', cabelos:['#6B4A2B','#C9A15A','#3B2A1E'], textura:'liso' },
+  negra:    { nome:'negra',    pele:'#6A4128', cabelos:['#1E1612'], textura:'crespo' },
+  parda:    { nome:'parda',    pele:'#B07A52', cabelos:['#2E1F16','#3B2A1E'], textura:'ondulado' },
+  indigena: { nome:'indígena', pele:'#C28B5C', cabelos:['#121014'], textura:'liso-franja' }
+};
+const rand = a => a[Math.floor(Math.random()*a.length)];
+
+function sortearAparencia(){
+  const chave = rand(Object.keys(ETNIAS)); const e = ETNIAS[chave];
+  return { etnia:chave, pele:e.pele, cabelo:rand(e.cabelos), textura:e.textura };
+}
+
+// Desenha o personagem em SVG. Uniforme igual para todos (cores sólidas).
+function avatarSVG(genero, ap, epi){
+  const s = ap.pele, h = ap.cabelo, t = ap.textura;
+  let tras = '', frente = '';
+  if (t === 'crespo'){
+    if (genero==='mulher') tras = `<circle cx="60" cy="48" r="40" fill="${h}"/>`;
+    else if (genero==='neutro') tras = `<circle cx="60" cy="46" r="34" fill="${h}"/>`;
+    else frente = `<path d="M31 46 Q30 16 60 15 Q90 16 89 46 Q82 32 60 31 Q38 32 31 46Z" fill="${h}"/>`;
+    if (genero!=='homem') frente = `<path d="M33 44 Q36 22 60 22 Q84 22 87 44 Q76 34 60 34 Q44 34 33 44Z" fill="${h}"/>`;
+  } else {
+    if (genero==='mulher') tras = `<path d="M30 50 Q28 18 60 18 Q92 18 90 50 L92 96 Q76 102 60 100 Q44 102 28 96Z" fill="${h}"/>`;
+    if (genero==='neutro') tras = `<path d="M31 50 Q29 19 60 19 Q91 19 89 50 L89 74 Q60 80 31 74Z" fill="${h}"/>`;
+    const onda = t==='ondulado' ? 'Q70 30 60 34 Q50 30 44 36' : 'Q60 30 44 36';
+    frente = t==='liso-franja'
+      ? `<path d="M31 50 Q30 20 60 20 Q90 20 89 50 L86 40 L34 40Z" fill="${h}"/>`
+      : `<path d="M32 46 Q32 18 60 18 Q88 18 88 46 Q84 30 76 34 ${onda} Q38 38 32 46Z" fill="${h}"/>`;
+  }
+  const touca = epi ? `<path d="M28 44 Q28 12 60 12 Q92 12 92 44 Q60 36 28 44Z" fill="#BFE0EA" stroke="#8FBFCC" stroke-width="2"/>` : '';
+  const mascara = epi
+    ? `<rect x="44" y="56" width="32" height="16" rx="6" fill="#BFE0EA" stroke="#8FBFCC" stroke-width="2"/><path d="M44 60 L33 54 M76 60 L87 54" stroke="#8FBFCC" stroke-width="2"/>`
+    : `<path d="M52 62 Q60 69 68 62" stroke="#3A2A22" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+  return `<svg viewBox="0 0 120 140" role="img" aria-label="Personagem: ${genero}, pessoa ${ETNIAS[ap.etnia].nome}">
+    ${tras}
+    <path d="M18 140 Q20 98 60 96 Q100 98 102 140Z" fill="#F7FBFA" stroke="#B9CCC8" stroke-width="2"/>
+    <path d="M48 96 L60 116 L72 96Z" fill="#7FB3C9"/>
+    <path d="M48 96 L56 124 M72 96 L64 124" stroke="#B9CCC8" stroke-width="2"/>
+    <rect x="52" y="76" width="16" height="20" fill="${s}"/>
+    <circle cx="60" cy="50" r="28" fill="${s}"/>
+    ${frente}${touca}
+    <circle cx="50" cy="49" r="3" fill="#2A1E18"/><circle cx="70" cy="49" r="3" fill="#2A1E18"/>
+    <circle cx="44" cy="58" r="4" fill="#E58C7A" opacity=".35"/><circle cx="76" cy="58" r="4" fill="#E58C7A" opacity=".35"/>
+    ${mascara}
+    ${epi?'<g fill="#DDF3F8" fill-opacity=".55" stroke="#4E7F8C" stroke-width="2.2"><rect x="39" y="41" width="19" height="15" rx="6"/><rect x="62" y="41" width="19" height="15" rx="6"/></g><path d="M58 47 L62 47 M39 46 L32 44 M81 46 L88 44" stroke="#4E7F8C" stroke-width="2.2"/>':''}
+    ${epi?'<rect x="20" y="126" width="14" height="12" rx="5" fill="#8FC7A5"/><rect x="86" y="126" width="14" height="12" rx="5" fill="#8FC7A5"/>':''}
+  </svg>`;
+}
+
+// ---------- ANIMAIS ----------
+const SEXO_COR = { M:'#2F6FA8', F:'#B5487A' };
+function mouseSVG(x, y, sc, a, flip){
+  const pup = a.filhote;
+  const corpo = pup ? '#F6CFCF' : '#F5F2EC';
+  const f = flip ? -1 : 1;
+  return `<g transform="translate(${x} ${y}) scale(${sc*f} ${sc})">
+    <path d="M-16 4 Q-30 10 -36 0" stroke="#E7A6AE" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="0" cy="0" rx="18" ry="11" fill="${corpo}" stroke="#A9B2AF" stroke-width="1.5"/>
+    <ellipse cx="15" cy="-3" rx="9" ry="7" fill="${corpo}" stroke="#A9B2AF" stroke-width="1.5"/>
+    <circle cx="11" cy="-10" r="5" fill="#F2B8C0" stroke="#A9B2AF" stroke-width="1.2"/>
+    <circle cx="18" cy="-5" r="1.6" fill="#3B2B2B"/><circle cx="24" cy="-2" r="1.6" fill="#E7A6AE"/>
+  </g>${a.sexo && !a.ocultarSexo ? `<g transform="translate(${x-4} ${y-16*sc})"><circle r="${pup?6:7}" fill="${SEXO_COR[a.sexo]}"/><text y="${pup?3.5:4}" text-anchor="middle" font-size="${pup?9:11}" font-weight="800" fill="#fff" font-family="Nunito,sans-serif">${a.sexo==='M'?'♂':'♀'}</text></g>`:''}`;
+}
+
+// ---------- GAIOLA (microisolador, vista lateral) ----------
+// g = { maravalha, enriq:[], animais:[], grade, agua(0-100), racao(0-100), tampa, sujeira(0-100) }
+function gaiolaSVG(g){
+  const sujo = g.sujeira||0;
+  let s = `<svg viewBox="0 0 320 200" role="img" aria-label="Gaiola microisoladora">
+  <path d="M30 82 L290 82 L278 186 L42 186Z" fill="#EAF6F8" stroke="#8FB3B8" stroke-width="3" stroke-linejoin="round"/>`;
+  if (g.maravalha){
+    s += `<path d="M36 150 Q80 140 120 148 Q170 138 220 147 Q260 140 284 150 L278 186 L42 186Z" fill="#E6BE63"/>`;
+    for (let i=0;i<26;i++){ const px=48+(i*37)%228, py=156+(i*13)%26; s+=`<path d="M${px} ${py} q4 -3 8 0" stroke="#B98E35" stroke-width="1.5" fill="none"/>`; }
+    if (sujo>0){
+      s += `<path d="M36 150 Q80 140 120 148 Q170 138 220 147 Q260 140 284 150 L278 186 L42 186Z" fill="#7A5B33" opacity="${Math.min(.65,sujo/140)}"/>`;
+      const n = Math.round(sujo/8);
+      for (let i=0;i<n;i++){ s+=`<ellipse cx="${55+(i*53)%210}" cy="${158+(i*17)%22}" rx="3" ry="1.8" fill="#4E3A22"/>`; }
+    }
+  }
+  if (g.enriq.includes('iglu')) s += `<path d="M58 152 Q58 112 96 112 Q134 112 134 152Z" fill="#E06C75" opacity=".72" stroke="#B4505A" stroke-width="2"/><path d="M84 152 Q84 136 96 136 Q108 136 108 152Z" fill="#9E3E48" opacity=".6"/>`;
+  if (g.enriq.includes('rolo')) s += `<rect x="150" y="132" width="52" height="22" rx="4" fill="#C49A6C" stroke="#8C6A43" stroke-width="2"/><ellipse cx="202" cy="143" rx="6" ry="11" fill="#8C6A43"/>`;
+  if (g.enriq.includes('ninho')) { [[236,146,10],[248,140,11],[260,146,10],[246,150,9]].forEach(c=> s+=`<circle cx="${c[0]}" cy="${c[1]}" r="${c[2]}" fill="#FBFBF7" stroke="#D6D8D2" stroke-width="1.5"/>`); }
+  // animais
+  const ad = g.animais.filter(a=>!a.filhote), fi = g.animais.filter(a=>a.filhote);
+  const posA = [[110,160],[190,162],[150,168],[240,166],[75,168],[215,170]];
+  ad.forEach((a,i)=>{ const p=posA[i%posA.length]; s+=mouseSVG(p[0],p[1],a.jovem?.72:.95,a,i%2===1); });
+  fi.forEach((a,i)=>{ s+=mouseSVG(232+(i%3)*16, 150+Math.floor(i/3)*12, .45, a, i%2===0); });
+  if (g.grade){
+    s += `<g stroke="#8E9AA0" stroke-width="2.2" fill="none"><path d="M30 84 L290 84"/>`;
+    for (let x=40;x<290;x+=14) s+=`<path d="M${x} 84 L${x} 90"/>`;
+    s += `<path d="M168 84 L184 128 L248 128 L262 84"/>`;
+    for (let x=176;x<258;x+=10) s+=`<path d="M${x} 86 L${x+2} 126"/>`;
+    s += `</g>`;
+    const r = g.racao||0;
+    if (r>0){ const top = 126 - 36*(r/100); for (let i=0;i<Math.round(r/7);i++){ s+=`<rect x="${186+(i*13)%60}" y="${top+(i*7)%Math.max(4,126-top)}" width="9" height="6" rx="3" fill="#A06A3C"/>`; } }
+  }
+  if (g.agua!==undefined && g.temAgua){
+    const w = g.agua||0;
+    s += `<g transform="rotate(-22 80 70)"><rect x="56" y="22" width="40" height="64" rx="8" fill="#F4FBFD" stroke="#7FA9B5" stroke-width="2.5"/>
+      <rect x="58.5" y="${84-60*w/100}" width="35" height="${60*w/100}" rx="6" fill="#6EC3E6" opacity=".85"/>
+      <rect x="70" y="86" width="12" height="22" rx="2" fill="#AEB9BD"/></g>`;
+  }
+  if (g.tampa){
+    s += `<path d="M24 82 L34 58 L286 58 L296 82Z" fill="#DCEFF2" opacity=".85" stroke="#7FA9B5" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="120" y="62" width="80" height="16" rx="3" fill="#FFFFFF" stroke="#9CB8BE" stroke-width="1.5"/>`;
+    for (let i=0;i<12;i++) s+=`<circle cx="${126+i*6.2}" cy="${66+(i%2)*6}" r="1.3" fill="#9CB8BE"/>`;
+  }
+  return s + `</svg>`;
+}
+
+// Ícones da bandeja
+const ICONES = {
+  maravalha:`<svg viewBox="0 0 40 40"><path d="M4 32 Q20 16 36 32Z" fill="#E6BE63"/><path d="M10 28 q4-3 8 0 M20 26 q4-3 8 0 M14 31 q4-3 8 0" stroke="#B98E35" stroke-width="1.8" fill="none"/></svg>`,
+  ninho:`<svg viewBox="0 0 40 40"><circle cx="14" cy="24" r="8" fill="#FBFBF7" stroke="#C9CCC4" stroke-width="1.5"/><circle cx="26" cy="22" r="9" fill="#FBFBF7" stroke="#C9CCC4" stroke-width="1.5"/><circle cx="20" cy="29" r="7" fill="#FBFBF7" stroke="#C9CCC4" stroke-width="1.5"/></svg>`,
+  rolo:`<svg viewBox="0 0 40 40"><rect x="5" y="14" width="26" height="14" rx="3" fill="#C49A6C" stroke="#8C6A43" stroke-width="2"/><ellipse cx="31" cy="21" rx="4" ry="7" fill="#8C6A43"/></svg>`,
+  iglu:`<svg viewBox="0 0 40 40"><path d="M4 32 Q4 8 20 8 Q36 8 36 32Z" fill="#E06C75" stroke="#B4505A" stroke-width="2"/><path d="M14 32 Q14 22 20 22 Q26 22 26 32Z" fill="#9E3E48"/></svg>`,
+  animais:`<svg viewBox="0 0 40 40"><ellipse cx="18" cy="24" rx="12" ry="8" fill="#F5F2EC" stroke="#A9B2AF" stroke-width="1.5"/><ellipse cx="29" cy="21" rx="6" ry="5" fill="#F5F2EC" stroke="#A9B2AF" stroke-width="1.5"/><circle cx="26" cy="15" r="3.5" fill="#F2B8C0"/><circle cx="31" cy="20" r="1.3" fill="#333"/></svg>`,
+  grade:`<svg viewBox="0 0 40 40"><g stroke="#7E8A90" stroke-width="2.2" fill="none"><path d="M4 12 L36 12"/><path d="M14 12 L18 30 L30 30 L34 12"/><path d="M20 13 L21 29 M25 13 L25 29 M30 13 L28 29"/></g></svg>`,
+  agua:`<svg viewBox="0 0 40 40"><rect x="12" y="4" width="16" height="26" rx="4" fill="#F4FBFD" stroke="#7FA9B5" stroke-width="2"/><rect x="14" y="12" width="12" height="16" rx="3" fill="#6EC3E6"/><rect x="17" y="30" width="6" height="7" fill="#AEB9BD"/></svg>`,
+  racao:`<svg viewBox="0 0 40 40"><rect x="8" y="22" width="9" height="6" rx="3" fill="#A06A3C"/><rect x="18" y="18" width="9" height="6" rx="3" fill="#A06A3C"/><rect x="24" y="25" width="9" height="6" rx="3" fill="#A06A3C"/><rect x="12" y="29" width="9" height="6" rx="3" fill="#8A5A30"/></svg>`,
+  tampa:`<svg viewBox="0 0 40 40"><path d="M3 26 L8 14 L32 14 L37 26Z" fill="#DCEFF2" stroke="#7FA9B5" stroke-width="2"/><rect x="14" y="17" width="12" height="6" fill="#fff" stroke="#9CB8BE"/></svg>`
+};
+
+// ---------- ESTADO ----------
+const FASES = ['Montar a gaiola','Rotina diária','Filhotes','Desmame','Desafio final'];
+let S = novoEstado();
+let B = null; // montagem em andamento
+
+function novoEstado(){
+  return { tela:'inicio', genero:'mulher', ap:sortearAparencia(), nome:'', pontos:0, fase:1, som:true,
+           epi:null, gaiolas:[], turno:0, trocas:0, idadeFilhotes:0, filhotes:[], separacao:null,
+           desmameFeito:false, resumo:null };
+}
+
+const $ = id => document.getElementById(id);
+const main = $('main');
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const clamp = v => Math.max(0, Math.min(100, v));
+
+// ---------- SOM (suave, opcional) ----------
+let actx = null;
+function tom(freqs, dur=.12){
+  if (!S.som) return;
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    freqs.forEach((f,i)=>{ const o=actx.createOscillator(), g=actx.createGain(); o.type='sine'; o.frequency.value=f;
+      const t=actx.currentTime+i*dur; g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.12,t+.02); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t+dur+.02); });
+  }catch(e){}
+}
+const somOk = () => tom([660,880]);
+const somErro = () => tom([300,240],.14);
+const somFesta = () => tom([523,659,784,1047],.11);
+
+// ---------- MENSAGENS ----------
+let toastT;
+function aviso(txt, tipo=''){
+  const t=$('toast'); $('toastTxt').textContent=txt; t.className='toast show '+tipo;
+  clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',3600);
+}
+function pontos(n){ S.pontos=Math.max(0,S.pontos+n); $('pts').textContent=S.pontos; }
+function abrirModal(html){ $('sheet').innerHTML=html; $('modal').hidden=false; }
+function fecharModal(){ $('modal').hidden=true; }
+$('modal').addEventListener('click',e=>{ if(e.target.id==='modal') fecharModal(); });
+
+$('glossBtn').onclick=()=>abrirModal(`<span class="tag">Glossário</span><h2>Palavras do biotério</h2>
+  <dl class="gloss">${GLOSSARIO.map(([t,d])=>`<dt>${t}</dt><dd>${d}</dd>`).join('')}</dl>
+  <button class="btn" onclick="fecharModal()">Voltar ao jogo</button>`);
+$('soundBtn').onclick=()=>{ S.som=!S.som; $('soundBtn').textContent=S.som?'♪':'×'; $('soundBtn').setAttribute('aria-label',S.som?'Som ligado':'Som desligado'); if(S.som) somOk(); };
+
+function cabecalho(){
+  $('top').hidden = S.tela==='inicio' || S.tela==='bloqueado';
+  $('phaseNum').textContent = S.tela==='final' ? 'Concluído' : `Fase ${S.fase} de 5`;
+  $('phaseName').textContent = S.tela==='final' ? 'Certificado' : FASES[S.fase-1];
+  $('pts').textContent = S.pontos;
+}
+
+function render(){
+  cabecalho();
+  ({ inicio:telaInicio, epi:telaEPI, montar:telaMontar, gerenciar:telaGerenciar, separar:telaSeparar, fimFase:telaFimFase, final:telaFinal, bloqueado:telaBloqueado })[S.tela]();
+  window.scrollTo(0,0);
+  salvarPartida();
+}
+
+// ---------- CONVITE POR QR CODE (uma partida por aparelho) ----------
+// Endereço usado no QR Code. Deixe vazio para usar automaticamente o endereço onde o jogo está hospedado.
+const SITE_URL = '';
+const ARTEFATO_URL = SITE_URL
+  || (location.protocol === 'file:' ? null
+  : /claude|anthropic/.test(location.hostname) ? 'https://claude.ai/artifact/8r8KHFFP6mxEePndMwN3ij'
+  : location.origin + location.pathname);
+// Download fora do Claude: compartilhar (celular) ou baixar direto (computador)
+const baixarDireto = { save: async ({filename, data}) => {
+  const file = new File([data], filename, {type:'image/png'});
+  if (navigator.canShare && navigator.canShare({files:[file]}) && matchMedia('(pointer:coarse)').matches){
+    try{ await navigator.share({files:[file], title:'Certificado Cuidador(a) do Biotério'}); return {status:'saved'}; }
+    catch(e){ if (e && e.name==='AbortError') throw {code:'declined'}; }
+  }
+  const u = URL.createObjectURL(data), a = document.createElement('a');
+  a.href = u; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u), 5000); return {status:'saved'};
+}};
+const CONVITE = /^c-[a-z0-9]{6,16}$/.test(location.hash.slice(1)) ? location.hash.slice(1) : null;
+const LS = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const usados = () => LS.get('bioterio-convites-usados') || [];
+function conviteUsado(){ return !!CONVITE && usados().includes(CONVITE); }
+function marcarConvite(){ if (CONVITE && !conviteUsado()) LS.set('bioterio-convites-usados', usados().concat(CONVITE)); }
+function salvarPartida(){ if (CONVITE && conviteUsado()) LS.set('bioterio-partida-'+CONVITE, {S,B}); }
+
+function telaBloqueado(){
+  main.innerHTML = `<div class="card" style="display:flex;flex-direction:column;gap:10px;text-align:center;align-items:center">
+    <span class="tag">Convite já usado</span>
+    <h2 style="font-size:26px">Este QR Code já foi usado neste aparelho</h2>
+    <p class="lead">Cada convite vale para uma partida. Peça um novo QR Code ao educador ou à educadora.</p></div>`;
+}
+
+function novoToken(){
+  const b = crypto.getRandomValues(new Uint8Array(8));
+  return 'c-' + Array.from(b, x => (x % 36).toString(36)).join('');
+}
+function abrirQR(){
+  if (!ARTEFATO_URL) return abrirModal(`<span class="tag">QR Code</span><h2>Hospede o jogo primeiro</h2>
+    <p class="lead">O jogo foi aberto direto do arquivo, então não há um endereço para o QR Code. Coloque o arquivo num site (ou preencha SITE_URL no código) e abra por lá.</p>
+    <button class="btn" onclick="fecharModal()">Entendi</button>`);
+  const url = ARTEFATO_URL + '#' + novoToken();
+  abrirModal(`<span class="tag">Para o educador ou a educadora</span><h2>QR Code de convite</h2>
+    <p class="lead">A criança escaneia com a câmera do celular. Cada QR Code vale para <b>uma partida</b> em cada aparelho. Gere um novo para cada criança.</p>
+    <div class="qr" id="qrBox"></div>
+    <p class="link" id="qrLink"></p>
+    <div class="row"><button class="btn ghost" id="qrCopiar">Copiar link</button><button class="btn" id="qrNovo">Gerar outro</button></div>
+    <button class="btn ghost" onclick="fecharModal()">Fechar</button>`);
+  $('qrLink').textContent = url;
+  try{ new QRCode($('qrBox'), { text:url, width:480, height:480, colorDark:'#1D3340', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M }); }
+  catch(e){ $('qrBox').textContent = 'Não foi possível desenhar o QR Code agora. Use o link abaixo.'; }
+  $('qrNovo').onclick = abrirQR;
+  $('qrCopiar').onclick = () => {
+    const sel = () => { const r=document.createRange(); r.selectNodeContents($('qrLink')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); aviso('Link selecionado. Copie pelo menu do aparelho.'); };
+    try{ navigator.clipboard.writeText(url).then(()=>aviso('Link copiado!','ok'), sel); }catch(e){ sel(); }
+  };
+}
+
+// ---------- CERTIFICADO EM IMAGEM (PNG) ----------
+function caixa(x, X, Y, W, H, r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+W,Y,X+W,Y+H,r); x.arcTo(X+W,Y+H,X,Y+H,r); x.arcTo(X,Y+H,X,Y,r); x.arcTo(X,Y,X+W,Y,r); x.closePath(); }
+function caber(x, txt, peso, tam, familia, max){ do { x.font = `${peso} ${tam}px ${familia}`; tam -= 2; } while (x.measureText(txt).width > max && tam > 20); }
+function quebrar(x, txt, max){ const pal=txt.split(' '), linhas=[]; let l=''; pal.forEach(p=>{ const t=l?l+' '+p:p; if (x.measureText(t).width>max && l){ linhas.push(l); l=p; } else l=t; }); if(l) linhas.push(l); return linhas; }
+function carregarImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
+
+async function desenharCertificado(){
+  try{ await document.fonts.ready; }catch(e){}
+  const W=1080, H=1350, c=document.createElement('canvas'); c.width=W; c.height=H;
+  const x=c.getContext('2d'), DISP='"Baloo 2", "Trebuchet MS", sans-serif', CORPO='Nunito, "Segoe UI", sans-serif';
+  x.fillStyle='#E7F2EF'; x.fillRect(0,0,W,H);
+  x.fillStyle='#FFFFFF'; caixa(x,50,50,W-100,H-100,44); x.fill();
+  x.strokeStyle='#1F8A84'; x.lineWidth=10; caixa(x,50,50,W-100,H-100,44); x.stroke();
+  x.lineWidth=3; caixa(x,74,74,W-148,H-148,32); x.stroke();
+  try{
+    const svg = avatarSVG(S.genero,S.ap,true).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ');
+    const img = await carregarImg('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg));
+    x.drawImage(img, W/2-120, 110, 240, 280);
+  }catch(e){}
+  x.textAlign='center'; x.textBaseline='alphabetic';
+  x.fillStyle='#1F8A84'; x.font=`800 30px ${CORPO}`; x.fillText('C E R T I F I C A D O', W/2, 450);
+  x.fillStyle='#1D3340'; caber(x,'Cuidador(a) do Biotério',800,78,DISP,880); x.fillText('Cuidador(a) do Biotério', W/2, 545);
+  x.fillStyle='#587080'; x.font=`600 36px ${CORPO}`; x.fillText('Certificamos que', W/2, 625);
+  const nome = S.nome || 'Cuidador(a) do Biotério';
+  x.fillStyle='#1F8A84'; caber(x,nome,800,84,DISP,840); x.fillText(nome, W/2, 730);
+  x.strokeStyle='#C7DCD7'; x.lineWidth=3; x.beginPath(); x.moveTo(200,760); x.lineTo(W-200,760); x.stroke();
+  x.fillStyle='#1D3340'; x.font=`600 36px ${CORPO}`;
+  quebrar(x,'concluiu as 5 fases do jogo cuidando dos animais do biotério com responsabilidade e respeito ao bem-estar animal.',820)
+    .forEach((l,i)=>x.fillText(l, W/2, 830+i*50));
+  x.fillStyle='#1F8A84'; x.font=`800 120px ${DISP}`; x.fillText(String(S.pontos), W/2, 1090);
+  const data = new Date().toLocaleDateString('pt-BR',{day:'numeric',month:'long',year:'numeric'});
+  x.fillStyle='#587080'; x.font=`600 34px ${CORPO}`; x.fillText('pontos · '+data, W/2, 1145);
+  x.font=`600 26px ${CORPO}`; x.fillText('Jogo educativo sobre a rotina do biotério', W/2, 1230);
+  return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej({code:'bad_request'}),'image/png'));
+}
+
+async function baixarCertificado(d){
+  const btn=$('baixar'); btn.disabled=true; btn.textContent='Preparando...';
+  try{
+    const blob = await desenharCertificado();
+    const base = (S.nome||'cuidador').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase() || 'cuidador';
+    await d.save({ filename:`certificado-bioterio-${base}.png`, data:blob });
+    aviso('Certificado salvo no aparelho!','ok');
+  }catch(e){
+    const c = e && e.code;
+    if (c==='declined') aviso('Tudo bem, o certificado não foi baixado.');
+    else if (c==='rate_limited') aviso('Já existe um pedido de download aberto. Tente de novo em instantes.','err');
+    else { aviso('Não deu para baixar aqui. Tire um print desta tela.','err'); btn.hidden=true; $('semDownload').hidden=false; }
+  }
+  btn.disabled=false; btn.textContent='Baixar certificado';
+}
+
+// ---------- TELA INICIAL ----------
+function telaInicio(){
+  const g=S.genero;
+  main.innerHTML = `
+  <div class="card hero">
+    <div class="avatar">${avatarSVG(g,S.ap,false)}</div>
+    <div style="min-width:0;display:flex;flex-direction:column;gap:6px">
+      <span class="tag">Jogo do biotério</span>
+      <h1 style="font-size:30px">Cuidador(a) do Biotério</h1>
+      <p class="lead">Cuide de camundongos de laboratório como se faz de verdade.</p>
+    </div>
+  </div>
+  <div class="card" style="display:flex;flex-direction:column;gap:12px">
+    <h3>Escolha seu personagem</h3>
+    <div class="seg" role="group" aria-label="Gênero">
+      ${['homem','mulher','neutro'].map(x=>`<button aria-pressed="${g===x}" data-g="${x}">${x[0].toUpperCase()+x.slice(1)}</button>`).join('')}
+    </div>
+    <button class="btn ghost small" id="sortear">Sortear outra aparência</button>
+    <label class="field" for="nome">Seu nome (vai no certificado)
+      <input id="nome" maxlength="30" autocomplete="off" placeholder="Digite seu nome" value="${S.nome.replace(/"/g,'&quot;')}">
+    </label>
+  </div>
+  <div class="card" style="display:flex;flex-direction:column;gap:8px">
+    <h3>Por que cuidamos bem dos animais na ciência?</h3>
+    <p>Os animais do biotério ajudam a descobrir vacinas e remédios. Por isso eles merecem casa limpa, comida, água e conforto todos os dias. Os cientistas seguem os <b>3Rs</b>:</p>
+    <ul class="list"><li><b>Substituir</b> o uso de animais quando der.</li><li><b>Reduzir</b> o número de animais.</li><li><b>Refinar</b> o cuidado para eles viverem bem.</li></ul>
+  </div>
+  <button class="btn" id="comecar">Começar</button>
+  ${CONVITE ? '' : '<button class="btn ghost small" id="qrBtn">QR Code para outros aparelhos</button>'}`;
+  if (!CONVITE) $('qrBtn').onclick = abrirQR;
+  main.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ S.genero=b.dataset.g; S.nome=$('nome').value; telaInicio(); });
+  $('sortear').onclick=()=>{ S.ap=sortearAparencia(); S.nome=$('nome').value; telaInicio(); };
+  $('comecar').onclick=()=>{ S.nome=$('nome').value.trim(); somOk(); marcarConvite(); irEPI(); };
+}
+
+// ---------- EPI (antes de cada fase) ----------
+const EPI = [
+  {id:'maos', nome:'Lavar as mãos', dica:'Primeiro lave bem as mãos.', icone:'<svg viewBox="0 0 40 40"><path d="M10 30 Q8 18 14 14 L14 8 Q16 6 18 8 L18 14 L20 6 Q22 4 24 6 L24 14 L28 10 Q30 9 31 11 L28 24 Q26 32 18 33Z" fill="#F2C9A8" stroke="#B88A66" stroke-width="1.5"/><circle cx="32" cy="28" r="3" fill="#6EC3E6"/><circle cx="8" cy="10" r="2.5" fill="#6EC3E6"/></svg>'},
+  {id:'prope', nome:'Propé', dica:'Depois de lavar as mãos, calce o propé por cima dos sapatos.', icone:'<svg viewBox="0 0 40 40"><path d="M6 30 Q6 18 14 16 L22 16 Q26 22 34 24 Q38 26 36 32 L8 33 Q6 33 6 30Z" fill="#BFE0EA" stroke="#8FBFCC" stroke-width="2"/><path d="M8 29 Q20 27 35 29" stroke="#8FBFCC" stroke-width="1.5" fill="none"/></svg>'},
+  {id:'jaleco', nome:'Jaleco', dica:'Com o propé calçado, vista o jaleco.', icone:'<svg viewBox="0 0 40 40"><path d="M8 36 L8 14 L15 8 L20 14 L25 8 L32 14 L32 36Z" fill="#F7FBFA" stroke="#9FB5B0" stroke-width="2"/><path d="M20 14 L20 36" stroke="#9FB5B0" stroke-width="2"/></svg>'},
+  {id:'touca', nome:'Touca', dica:'Com o jaleco, coloque a touca para cobrir o cabelo.', icone:'<svg viewBox="0 0 40 40"><path d="M5 26 Q5 8 20 8 Q35 8 35 26 Q20 20 5 26Z" fill="#BFE0EA" stroke="#8FBFCC" stroke-width="2"/></svg>'},
+  {id:'mascara', nome:'Máscara', dica:'Depois da touca vem a máscara.', icone:'<svg viewBox="0 0 40 40"><rect x="9" y="13" width="22" height="14" rx="5" fill="#BFE0EA" stroke="#8FBFCC" stroke-width="2"/><path d="M9 17 L3 13 M31 17 L37 13" stroke="#8FBFCC" stroke-width="2"/></svg>'},
+  {id:'oculos', nome:'Óculos', dica:'Depois da máscara, coloque os óculos de proteção.', icone:'<svg viewBox="0 0 40 40"><g fill="#DDF3F8" stroke="#4E7F8C" stroke-width="2.2"><rect x="4" y="14" width="14" height="11" rx="4"/><rect x="22" y="14" width="14" height="11" rx="4"/></g><path d="M18 18 L22 18" stroke="#4E7F8C" stroke-width="2.2"/></svg>'},
+  {id:'luvas', nome:'Luvas', dica:'As luvas vão por último, para ficarem bem limpas.', icone:'<svg viewBox="0 0 40 40"><path d="M12 34 L12 18 Q12 14 15 14 L15 8 Q17 6 19 8 L19 14 L21 6 Q23 4 25 6 L25 14 L28 11 Q31 11 30 14 L28 26 L28 34Z" fill="#8FC7A5" stroke="#5E9C78" stroke-width="1.5"/></svg>'}
+];
+// Minigame: esfregar o dedo na tela para lavar as mãos
+const ESFREGAR_META = 2600; // distância total (px) a esfregar; ajuste para mais fácil ou difícil
+function lavarMaos(fim){
+  abrirModal(`<span class="tag">Lavagem das mãos</span><h2>Esfregue para lavar</h2>
+    <p class="lead">Passe o dedo para lá e para cá sobre as mãos até fazer bastante espuma.</p>
+    <div class="rub" id="rub">
+      <svg viewBox="0 0 200 140" aria-hidden="true">
+        <path d="M54 128 L50 70 Q50 60 58 60 L60 30 Q64 24 68 30 L70 58 L74 22 Q78 16 82 22 L82 58 L90 34 Q94 30 97 36 L92 78 Q90 120 70 128Z" fill="${S.ap.pele}" stroke="#7a5a44" stroke-width="2"/>
+        <path d="M146 128 L150 70 Q150 60 142 60 L140 30 Q136 24 132 30 L130 58 L126 22 Q122 16 118 22 L118 58 L110 34 Q106 30 103 36 L108 78 Q110 120 130 128Z" fill="${S.ap.pele}" stroke="#7a5a44" stroke-width="2"/>
+        <g id="espuma"></g>
+      </svg>
+      <span id="rubDica">Esfregue aqui</span>
+    </div>
+    <div class="meter"><span id="rubPct">Espuma: 0%</span><div class="bar"><i id="rubBar" style="width:0%;background:var(--accent)"></i></div></div>`);
+  const pad=$('rub'), esp=$('espuma'); let ult=null, total=0, bolhas=0, feito=false;
+  const mover = ev=>{
+    if (feito || ult===null) return;
+    const r=pad.getBoundingClientRect(), x=ev.clientX, y=ev.clientY;
+    total += Math.hypot(x-ult.x, y-ult.y); ult={x,y};
+    const pct=Math.min(100, Math.round(total/ESFREGAR_META*100));
+    $('rubBar').style.width=pct+'%'; $('rubPct').textContent='Espuma: '+pct+'%';
+    $('rubDica').hidden = pct>5;
+    while (bolhas < pct*0.6){ bolhas++;
+      const bx=((x-r.left)/r.width)*200 + (Math.random()*40-20), by=((y-r.top)/r.height)*140 + (Math.random()*30-15);
+      esp.insertAdjacentHTML('beforeend',`<circle cx="${Math.max(20,Math.min(180,bx))}" cy="${Math.max(20,Math.min(130,by))}" r="${4+Math.random()*7}" fill="#fff" fill-opacity=".85" stroke="#9ED3E8" stroke-width="1.2"/>`); }
+    if (pct>=100){ feito=true; somFesta(); setTimeout(()=>{ fecharModal(); fim(); }, 500); }
+  };
+  pad.addEventListener('pointerdown',ev=>{ ult={x:ev.clientX,y:ev.clientY}; try{pad.setPointerCapture(ev.pointerId);}catch(e){} });
+  pad.addEventListener('pointermove',mover);
+  ['pointerup','pointercancel','pointerleave'].forEach(t=>pad.addEventListener(t,()=>{ ult=null; }));
+}
+function irEPI(){ S.epi={passo:0, ordem:shuffle(EPI.map(e=>e.id))}; S.tela='epi'; render(); }
+function telaEPI(){
+  const e=S.epi, pronto = e.passo>=EPI.length;
+  main.innerHTML = `
+  <div class="card hero">
+    <div class="avatar">${avatarSVG(S.genero,S.ap,pronto)}</div>
+    <div style="min-width:0;display:flex;flex-direction:column;gap:6px">
+      <span class="tag">Antes de entrar</span><h2>Prepare-se com o EPI</h2>
+      <p class="lead">${pronto?'Tudo pronto! Agora você pode entrar na sala dos animais.':'Toque nos itens na ordem certa. O EPI protege você e os animais.'}</p>
+    </div>
+  </div>
+  <div class="steps">${EPI.map((x,i)=>`<span class="chip ${i<e.passo?'done':i===e.passo?'now':''}">${i+1}. ${x.nome}</span>`).join('')}</div>
+  ${pronto?`<button class="btn" id="entrar">Entrar no biotério</button>`:
+  `<div class="tray">${e.ordem.map(id=>{const x=EPI.find(y=>y.id===id); const usado=EPI.findIndex(y=>y.id===id)<e.passo;
+     return `<button class="item ${usado?'used':''}" data-epi="${id}" ${usado?'disabled':''}>${x.icone}${x.nome}</button>`;}).join('')}</div>`}`;
+  if (pronto){ $('entrar').onclick=()=>iniciarFase(); return; }
+  main.querySelectorAll('[data-epi]').forEach(b=>b.onclick=()=>{
+    const certo=EPI[e.passo];
+    if (b.dataset.epi===certo.id){
+      if (certo.id==='maos') return lavarMaos(()=>{ e.passo++; somOk(); aviso('Mãos limpinhas!','ok'); telaEPI(); });
+      e.passo++; somOk(); aviso('Muito bem!','ok'); telaEPI(); }
+    else { somErro(); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); aviso(certo.dica,'err'); }
+  });
+}
+
+// ---------- FASES ----------
+function iniciarFase(){
+  const f=S.fase;
+  if (f===1) return novaMontagem({destino:'f1', titulo:'Sua primeira gaiola', modo:'inicial'});
+  if (f===2){ S.turno=0; S.trocas=0; S.tela='gerenciar'; render(); return aviso('Cuide da gaiola a cada dia: ração, água e limpeza.'); }
+  if (f===3){
+    const c=S.gaiolas[0].g; S.idadeFilhotes=0; S.turno=0; S.desmameFeito=false;
+    if (!c.enriq.includes('ninho')) c.enriq.push('ninho');
+    S.filhotes = shuffle(['M','M','M','F','F','F']).map((sx,i)=>({id:'p'+i, sexo:sx, filhote:true, ocultarSexo:true}));
+    c.animais = c.animais.filter(a=>!a.filhote).concat(S.filhotes);
+    S.tela='gerenciar'; render();
+    return aviso('Nasceram 6 filhotes! A mãe usa o ninho para mantê-los quentinhos.','ok');
+  }
+  if (f===4){ S.separacao={ fila:S.filhotes.map(p=>({...p, ocultarSexo:false})), M:[], F:[] }; S.tela='separar'; render(); return; }
+  if (f===5){
+    S.turno=0;
+    S.gaiolas.forEach((x,i)=>{ x.g.racao=clamp(60+i*15); x.g.agua=clamp(85-i*20); x.g.sujeira=clamp(25+i*15); });
+    S.tela='gerenciar'; render();
+    return aviso('Agora são 3 gaiolas! Observe as barras de cada uma.');
+  }
+}
+
+// ---------- MONTAGEM DA GAIOLA ----------
+const NOMES = { maravalha:'Maravalha', ninho:'Ninho', rolo:'Rolo', iglu:'Iglu', grade:'Grade', agua:'Água', racao:'Ração', tampa:'Tampa' };
+function gaiolaVazia(){ return {maravalha:false, enriq:[], animais:[], grade:false, temAgua:false, agua:0, racao:0, tampa:false, sujeira:0}; }
+
+function novaMontagem(o){
+  B = { modo:'inicial', preset:[], rotuloAnimais:'Animais', ...o, g:gaiolaVazia(), passo:0, erros:0, pronto:false,
+        tray:shuffle(['maravalha','ninho','rolo','iglu','animais','grade','agua','racao','tampa']),
+        pool:[{id:'m1',sexo:'M'},{id:'m2',sexo:'M'},{id:'f1',sexo:'F'},{id:'f2',sexo:'F'},{id:'f3',sexo:'F'}], sel:[] };
+  S.tela='montar'; render();
+}
+
+function telaMontar(){
+  const g=B.g, p=B.passo;
+  const instr = B.pronto ? 'Gaiola pronta!'
+    : p===2 && g.enriq.length<3 ? 'Agora: Animais. Se quiser, ainda dá para pôr mais enriquecimento.'
+    : 'Agora: ' + ORDEM[p].nome + (p===1?' (ninho, rolo ou iglu)':'');
+  main.innerHTML = `
+  <div class="stage">
+    <div class="cage-title">${B.titulo}<span>Etapa ${Math.min(p+1,7)} de 7</span></div>
+    ${gaiolaSVG(g)}
+  </div>
+  <div class="steps">${ORDEM.map((x,i)=>`<span class="chip ${i<p||B.pronto?'done':i===p?'now':''}">${i+1}. ${x.nome}</span>`).join('')}</div>
+  <p style="font-weight:800">${instr}</p>
+  ${B.pronto ? `<button class="btn" id="seguir">Continuar</button>` :
+  `<div class="tray">${B.tray.map(id=>{
+      const usado = ENRIQ.includes(id) ? g.enriq.includes(id) : (ORDEM.findIndex(o=>o.id===id) > -1 && ORDEM.findIndex(o=>o.id===id) < p);
+      const nome = id==='animais' ? B.rotuloAnimais : NOMES[id];
+      return `<button class="item ${usado?'used':''}" data-it="${id}" ${usado?'disabled':''}>${ICONES[id]}${nome}</button>`; }).join('')}</div>`}`;
+  if (B.pronto){ $('seguir').onclick=concluirMontagem; return; }
+  main.querySelectorAll('[data-it]').forEach(b=>b.onclick=()=>tocarItem(b.dataset.it,b));
+}
+
+function errar(btn, dica){
+  B.erros++; pontos(CFG.pontos.erro); somErro(); aviso(dica,'err');
+  if (btn){ btn.classList.remove('shake'); void btn.offsetWidth; btn.classList.add('shake'); }
+}
+
+function tocarItem(id, btn){
+  const g=B.g, p=B.passo;
+  if (ENRIQ.includes(id)){
+    if (p===0) return errar(btn, ORDEM[0].dica);
+    if (p>2) return errar(btn, 'O enriquecimento entra antes dos animais, logo depois da maravalha.');
+    g.enriq.push(id); pontos(CFG.pontos.acerto);
+    if (id!=='rolo') pontos(CFG.pontos.bonusAbrigo);
+    if (p===1) B.passo=2;
+    somOk(); aviso(id==='rolo'?'Rolo colocado! Os camundongos adoram passar por dentro.':`${NOMES[id]} colocado! Abrigo e conforto valem pontos extras.`,'ok');
+    return telaMontar();
+  }
+  const esperado = ORDEM[p].id;
+  if (id!==esperado) return errar(btn, ORDEM[p].dica);
+  if (id==='animais'){
+    if (B.modo==='inicial') return abrirEscolha();
+    g.animais = B.preset.map(a=>({...a}));
+  }
+  if (id==='maravalha') g.maravalha=true;
+  if (id==='grade') g.grade=true;
+  if (id==='agua'){ g.temAgua=true; g.agua=100; }
+  if (id==='racao') g.racao=100;
+  if (id==='tampa') g.tampa=true;
+  avancar();
+}
+
+function avancar(){
+  pontos(CFG.pontos.acerto); somOk();
+  B.passo++;
+  if (B.passo>=ORDEM.length){
+    B.pronto=true; somFesta();
+    if (B.erros===0){ pontos(CFG.pontos.montagemPerfeita); aviso(`Montagem perfeita! +${CFG.pontos.montagemPerfeita} pontos.`,'ok'); }
+    else aviso('Gaiola pronta e fechada com a tampa com filtro!','ok');
+  } else aviso('Certo!','ok');
+  telaMontar();
+}
+
+// Escolha dos animais (montagem inicial): exatamente 1 macho + 1 ou 2 fêmeas
+function abrirEscolha(){
+  const mini = a => `<svg viewBox="-42 -32 84 50">${mouseSVG(0,6,1,{...a, filhote:false},false)}</svg>`;
+  abrirModal(`<span class="tag">Etapa 3: Animais</span><h2>Monte o grupo de reprodução</h2>
+    <p class="lead">Toque para escolher. Regra do biotério: <b>1 macho</b> com <b>1 ou 2 fêmeas</b>.</p>
+    <div class="pick">${B.pool.map(a=>`<button data-a="${a.id}" aria-pressed="${B.sel.includes(a.id)}">${mini(a)}${a.sexo==='M'?'Macho':'Fêmea'}</button>`).join('')}</div>
+    <p id="selInfo" style="font-weight:800"></p>
+    <div class="row"><button class="btn ghost" onclick="fecharModal()">Voltar</button><button class="btn" id="confirmar">Colocar na gaiola</button></div>`);
+  const info=()=>{ const m=B.sel.filter(i=>i[0]==='m').length, f=B.sel.length-m; $('selInfo').textContent=`Escolhidos: ${m} macho(s) e ${f} fêmea(s)`; };
+  info();
+  $('sheet').querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.a; B.sel = B.sel.includes(id) ? B.sel.filter(x=>x!==id) : B.sel.concat(id);
+    b.setAttribute('aria-pressed', B.sel.includes(id)); info();
+  });
+  $('confirmar').onclick=()=>{
+    const m=B.sel.filter(i=>i[0]==='m').length, f=B.sel.length-m;
+    let msg='';
+    if (m===0) msg='A gaiola precisa de 1 macho para formar o grupo de reprodução.';
+    else if (m>1) msg='Só pode 1 macho por gaiola. Machos juntos podem brigar.';
+    else if (f===0) msg='Escolha 1 ou 2 fêmeas para ficar com o macho.';
+    else if (f>2) msg='1 macho com 3 fêmeas não é permitido. Use 1 ou 2 fêmeas para respeitar o espaço da gaiola.';
+    if (msg){ B.erros++; pontos(CFG.pontos.erro); somErro(); aviso(msg,'err'); return; }
+    B.g.animais = B.pool.filter(a=>B.sel.includes(a.id)).map(a=>({...a}));
+    fecharModal(); avancar();
+  };
+}
+
+function concluirMontagem(){
+  const g=B.g, d=B.destino;
+  if (d==='f1'){ g.sujeira=5; S.gaiolas=[{id:'casal', nome:'Gaiola do casal', g}];
+    return fimFase(['A ordem da montagem: maravalha, enriquecimento, animais, grade, água, ração e tampa.','A gaiola de reprodução tem 1 macho com 1 ou 2 fêmeas.','A tampa com filtro protege os animais de germes.']); }
+  if (d==='troca'){
+    const alvo=S.gaiolas[B.idx]; alvo.g=g; S.trocas++; pontos(CFG.pontos.troca);
+    S.tela='gerenciar'; render(); return aviso(`Gaiola trocada! Os animais estão numa casa limpa. +${CFG.pontos.troca}`,'ok');
+  }
+  if (d==='desM'){ S.gaiolas.push({id:'jm', nome:'Jovens machos', g});
+    return novaMontagem({destino:'desF', titulo:'Gaiola das fêmeas jovens', modo:'desmame', rotuloAnimais:'Fêmeas jovens', preset:S.separacao.F}); }
+  if (d==='desF'){ S.gaiolas.push({id:'jf', nome:'Jovens fêmeas', g});
+    return fimFase(['Aos 21 dias os filhotes já comem sozinhos e podem ser desmamados.','Machos e fêmeas desmamados ficam em gaiolas separadas.','Cada gaiola nova é montada do zero, na mesma ordem.']); }
+}
+
+// ---------- CUIDADO DIÁRIO (fases 2, 3 e 5) ----------
+const corNivel = v => v>=60?'var(--good)':v>=30?'var(--warn)':'var(--bad)';
+function bemEstar(g){ return clamp(Math.round((g.racao+g.agua+(100-g.sujeira))/3 + g.enriq.length*4)); }
+function medidor(nome,v){ return `<div class="meter"><span>${nome}: ${Math.round(v)}%</span><div class="bar"><i style="width:${v}%;background:${corNivel(v)}"></i></div></div>`; }
+function rotuloBem(v){ return v>=60?'Animais felizes':v>=30?'Precisam de atenção':'Precisam de você agora!'; }
+
+function telaGerenciar(){
+  const f=S.fase;
+  const topo = f===3 ? `Filhotes com <b>${S.idadeFilhotes} dias</b>. O desmame é aos ${CFG.idadeDesmame} dias.`
+    : f===2 ? `Dia ${S.turno+1}. Mantenha ração, água e limpeza em dia. Troque a gaiola quando ficar suja.`
+    : `Dia ${S.turno+1} de ${CFG.turnosDesafio}. Cuide das 3 gaiolas ao mesmo tempo.`;
+  const multi = S.gaiolas.length>1;
+  main.classList.toggle('tight', multi);
+  if (multi){
+    // Todas as gaiolas na mesma tela, em cartões compactos
+    main.innerHTML = `<div class="card"><p>${topo}</p></div><div class="multi-wrap">` +
+    S.gaiolas.map((x,i)=>{ const g=x.g, be=bemEstar(g);
+      return `<div class="mini">
+        <div class="cage-title">${x.nome}<span style="color:${corNivel(be)}">${rotuloBem(be)}</span></div>
+        ${gaiolaSVG(g)}
+        <div class="side">
+          <div class="meters">${medidor('Ração',g.racao)}${medidor('Água',g.agua)}${medidor('Limpeza',100-g.sujeira)}${medidor('Bem-estar',be)}</div>
+          <div class="actions">
+            <button class="btn ghost" data-ac="racao" data-i="${i}">Ração</button>
+            <button class="btn ghost" data-ac="agua" data-i="${i}">Água</button>
+            <button class="btn ghost" data-ac="trocar" data-i="${i}">Trocar</button>
+          </div></div></div>`; }).join('') + `</div><button class="btn" id="tempo">Próximo dia</button>`;
+    main.querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>acao(b.dataset.ac, +b.dataset.i));
+    $('tempo').onclick=avancarTempo;
+    return;
+  }
+  main.innerHTML = `<div class="card"><p>${topo}</p></div>` +
+  S.gaiolas.map((x,i)=>{ const g=x.g, be=bemEstar(g);
+    const nome = f===3 && g.animais.some(a=>a.filhote) ? x.nome+' e filhotes' : x.nome;
+    return `<div class="stage" style="display:flex;flex-direction:column;gap:10px">
+      <div class="cage-title">${nome}<span style="color:${corNivel(be)}">${rotuloBem(be)}</span></div>
+      ${gaiolaSVG(g)}
+      <div class="meters">${medidor('Ração',g.racao)}${medidor('Água',g.agua)}${medidor('Limpeza',100-g.sujeira)}${medidor('Bem-estar',be)}</div>
+      <div class="actions">
+        <button class="btn ghost" data-ac="racao" data-i="${i}">Ração</button>
+        <button class="btn ghost" data-ac="agua" data-i="${i}">Água</button>
+        <button class="btn ghost" data-ac="trocar" data-i="${i}">Trocar</button>
+      </div></div>`; }).join('') +
+  (f===3 ? `<div class="row"><button class="btn ghost" id="tempo">Avançar ${CFG.diasPorTurnoFilhotes} dias</button><button class="btn" id="desmamar">Desmamar</button></div>`
+         : `<button class="btn" id="tempo">Próximo dia</button>`);
+  main.querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>acao(b.dataset.ac, +b.dataset.i));
+  $('tempo').onclick=avancarTempo;
+  if (f===3) $('desmamar').onclick=desmamar;
+}
+
+function acao(tipo, i){
+  const x=S.gaiolas[i], g=x.g;
+  if (tipo==='racao' || tipo==='agua'){
+    const nome = tipo==='racao'?'O comedouro':'O bebedouro';
+    if (g[tipo]>=80) return aviso(`${nome} ainda está cheio. Reponha quando estiver baixando.`);
+    pontos(g[tipo]<50?CFG.pontos.repor:2); g[tipo]=100; somOk();
+    aviso(tipo==='racao'?'Ração reposta! Os camundongos comem pelas grades.':'Água fresca no bebedouro!','ok');
+    return telaGerenciar();
+  }
+  if (g.sujeira<50){ pontos(CFG.pontos.trocaCedo); somErro(); return aviso('A gaiola ainda está limpa. Trocar sem precisar estressa os animais.','err'); }
+  novaMontagem({ destino:'troca', idx:i, modo:'troca', titulo:'Gaiola limpa: '+x.nome, rotuloAnimais:'Animais da gaiola suja', preset:g.animais });
+  aviso('Monte a gaiola limpa na ordem certa e depois passe os animais com cuidado.');
+}
+
+function avancarTempo(){
+  const f=S.fase; S.turno++;
+  if (f===3) S.idadeFilhotes += CFG.diasPorTurnoFilhotes;
+  const alertas=[];
+  S.gaiolas.forEach(x=>{
+    const g=x.g;
+    const peso = g.animais.reduce((s,a)=>s+(a.filhote?.15:a.jovem?.7:1),0);
+    const fator = Math.max(.8, peso/3);
+    g.racao=clamp(g.racao-CFG.gasto.racao*fator); g.agua=clamp(g.agua-CFG.gasto.agua*fator); g.sujeira=clamp(g.sujeira+CFG.gasto.sujeira*fator);
+    if (g.agua<25) alertas.push(`${x.nome}: os animais estão com sede. Reponha a água.`);
+    else if (g.racao<25) alertas.push(`${x.nome}: o comedouro está quase vazio.`);
+    else if (g.sujeira>75) alertas.push(`${x.nome}: a gaiola está muito suja. Hora de trocar.`);
+  });
+  if (alertas.length){ pontos(CFG.pontos.alerta*alertas.length); somErro(); }
+
+  if (f===2 && S.turno>=CFG.turnosRotina){
+    if (S.trocas>=1) return fimFase(['Ração e água são repostas antes de acabar.','A maravalha suja é trocada por uma gaiola limpa.','Na troca, a gaiola nova é montada na mesma ordem.']);
+    render(); return aviso('Antes de terminar a fase, troque a gaiola quando ela estiver suja.','err');
+  }
+  if (f===5 && S.turno>=CFG.turnosDesafio){
+    return fimFase(['Um biotério tem muitas gaiolas e todas precisam de cuidado diário.','Olhar as barras ajuda a decidir o que fazer primeiro.','Animais bem cuidados ficam saudáveis e calmos.']);
+  }
+  render();
+  if (f===3 && S.idadeFilhotes===CFG.idadeDesmame) return aviso('Hoje os filhotes completam 21 dias! É dia de desmame.','ok');
+  if (f===3 && S.idadeFilhotes>CFG.idadeDesmame) return aviso('Os filhotes já passaram dos 21 dias. Desmame agora!','err');
+  if (alertas.length) aviso(alertas[0],'err');
+}
+
+function desmamar(){
+  const d=S.idadeFilhotes, alvo=CFG.idadeDesmame;
+  if (d<alvo){ pontos(-5); somErro(); return aviso(`Ainda é cedo: os filhotes mamam até ${alvo} dias. Faltam ${alvo-d} dias.`,'err'); }
+  if (d===alvo){ pontos(CFG.pontos.desmameCerto); somFesta(); }
+  else { pontos(CFG.pontos.desmameErrado); somErro(); }
+  const c=S.gaiolas[0].g; c.animais=c.animais.filter(a=>!a.filhote);
+  fimFase([ d===alvo ? 'Você desmamou no dia certo: 21 dias!' : 'O desmame deve ser feito no dia certo: 21 dias. Desta vez passou um pouco.',
+    'Até os 21 dias os filhotes mamam e ficam com a mãe.','O ninho ajuda a mãe a manter os filhotes aquecidos.']);
+}
+
+// ---------- DESMAME: separar por sexo ----------
+function telaSeparar(){
+  const s=S.separacao, p=s.fila[0];
+  if (!p){
+    return novaMontagem({destino:'desM', titulo:'Gaiola dos machos jovens', modo:'desmame', rotuloAnimais:'Machos jovens', preset:s.M});
+  }
+  const total=s.fila.length+s.M.length+s.F.length, n=s.M.length+s.F.length+1;
+  main.innerHTML = `
+  <div class="card" style="display:flex;flex-direction:column;gap:6px">
+    <span class="tag">Dia do desmame</span><h2>Separe os filhotes</h2>
+    <p class="lead">O pai e a mãe continuam na gaiola do casal. Machos e fêmeas jovens vão para gaiolas diferentes, para não terem filhotes cedo demais.</p>
+  </div>
+  <div class="stage" style="text-align:center">
+    <div class="cage-title">Filhote ${n} de ${total}<span>♂ macho · ♀ fêmea</span></div>
+    <svg viewBox="-46 -40 92 56" style="max-width:260px;margin:0 auto">${mouseSVG(0,8,1.4,{...p, filhote:true},false)}</svg>
+    <p class="lead" style="font-size:14px">No biotério, o técnico identifica o sexo olhando o filhote de perto. Aqui a etiqueta mostra.</p>
+  </div>
+  <div class="row">
+    <button class="btn" data-s="M">Machos ♂ (${s.M.length})</button>
+    <button class="btn" data-s="F">Fêmeas ♀ (${s.F.length})</button>
+  </div>`;
+  main.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{
+    if (b.dataset.s!==p.sexo){ pontos(CFG.pontos.erro); somErro(); return aviso(`Olhe a etiqueta: este filhote é ${p.sexo==='M'?'macho ♂':'fêmea ♀'}.`,'err'); }
+    s.fila.shift(); s[p.sexo].push({id:p.id, sexo:p.sexo, jovem:true}); pontos(CFG.pontos.separarCerto); somOk(); telaSeparar();
+  });
+}
+
+// ---------- FIM DE FASE ----------
+function fimFase(aprendeu){ S.resumo=aprendeu; S.tela='fimFase'; somFesta(); render(); }
+function telaFimFase(){
+  const f=S.fase;
+  main.innerHTML = `
+  <div class="card" style="display:flex;flex-direction:column;gap:10px;text-align:center;align-items:center">
+    <span class="tag">Fase ${f} concluída</span><h2 style="font-size:28px">${FASES[f-1]}</h2>
+    <div class="big">${S.pontos}</div><p class="lead">pontos até agora</p>
+  </div>
+  <div class="card" style="display:flex;flex-direction:column;gap:8px"><h3>O que você aprendeu</h3>
+    <ul class="list">${S.resumo.map(t=>`<li>${t}</li>`).join('')}</ul></div>
+  <button class="btn" id="prox">${f<5?`Fase ${f+1}: ${FASES[f]}`:'Ver meu certificado'}</button>`;
+  $('prox').onclick=()=>{ if (f<5){ S.fase++; irEPI(); } else { S.tela='final'; render(); } };
+}
+
+// ---------- CERTIFICADO ----------
+function telaFinal(){
+  const nome = S.nome || 'Cuidador(a) do Biotério';
+  const data = new Date().toLocaleDateString('pt-BR',{day:'numeric',month:'long',year:'numeric'});
+  main.innerHTML = `
+  <div class="cert">
+    <div style="width:110px">${avatarSVG(S.genero,S.ap,true)}</div>
+    <span class="tag">Certificado</span>
+    <h2>Cuidador(a) do Biotério</h2>
+    <p>Certificamos que</p>
+    <div class="name"></div>
+    <p>concluiu as 5 fases cuidando dos animais com responsabilidade e respeito ao bem-estar animal.</p>
+    <div class="big">${S.pontos}</div><p class="lead">pontos · ${data}</p>
+  </div>
+  <div class="card" style="display:flex;flex-direction:column;gap:8px"><h3>Você aprendeu a</h3>
+    <ul class="list">
+      <li>Vestir o EPI na ordem certa.</li>
+      <li>Montar a gaiola: maravalha, enriquecimento, animais, grade, água, ração e tampa.</li>
+      <li>Formar o grupo de reprodução com 1 macho e 1 ou 2 fêmeas.</li>
+      <li>Repor ração e água e trocar a gaiola quando está suja.</li>
+      <li>Desmamar os filhotes aos 21 dias, separando machos e fêmeas.</li>
+    </ul></div>
+  <button class="btn" id="baixar" hidden>Baixar certificado</button>
+  <p class="lead" id="semDownload" hidden style="text-align:center">Para guardar o certificado, tire um print desta tela.</p>
+  ${CONVITE ? '<p class="lead" style="text-align:center">Este convite já foi usado. Para jogar de novo, peça um novo QR Code.</p>' : '<button class="btn ghost" id="denovo">Jogar de novo</button>'}`;
+  main.querySelector('.name').textContent = nome;
+  Promise.resolve(window.claude?.use ? window.claude.use('downloads') : null).catch(()=>null).then(d=>{
+    if (!$('baixar')) return;
+    if (!d && !window.claude) d = baixarDireto;   // fora do Claude: download pelo navegador
+    if (d){ $('baixar').hidden=false; $('baixar').onclick=()=>baixarCertificado(d); }
+    else $('semDownload').hidden=false;
+  });
+  if (CONVITE) return;
+  $('denovo').onclick=()=>{ const n=S.nome, gn=S.genero, som=S.som; S=novoEstado(); S.nome=n; S.genero=gn; S.som=som; B=null; render(); };
+}
+
+// ---------- INÍCIO ----------
+window.claude?.hot?.snapshot?.(()=>({S,B}));
+const iniciar = d => {
+  if (d && d.S){ S=d.S; B=d.B; }
+  else if (conviteUsado()){
+    const p = LS.get('bioterio-partida-'+CONVITE);
+    if (p && p.S){ S=p.S; B=p.B; } else S.tela='bloqueado';   // retoma a partida deste convite ou bloqueia
+  }
+  render();
+};
+window.claude?.hot?.ready ? window.claude.hot.ready(iniciar) : iniciar(window.claude?.hot?.data ?? {});
+</script>
+
+</body>
+</html>
