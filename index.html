@@ -133,7 +133,9 @@ p{margin:0}
 .clock-top b{font-variant-numeric:tabular-nums}
 .clock .bar{height:10px;border-radius:999px;background:var(--soft);overflow:hidden}
 .clock .bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .25s linear}
-.clock .btn{min-height:36px;font-size:14px;padding:0 12px;box-shadow:0 2px 0 var(--line)}
+.clock .btn{min-height:40px;font-size:14px;padding:0 6px;box-shadow:0 2px 0 var(--line)}
+.clock-btns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.clock-btns .btn{line-height:1.15}
 
 /* impressão do certificado (folha A4 deitada) */
 #printCert{display:none}
@@ -870,27 +872,37 @@ function medidor(nome,v){ return `<div class="meter"><span>${nome}: ${Math.round
 function rotuloBem(v){ return v>=60?'Animais felizes':v>=30?'Precisam de atenção':'Precisam de você agora!'; }
 
 // ---------- RELÓGIO: o tempo passa sozinho ----------
-const relogio = { t:0, pausado:false };
+const relogio = { t:0, pausado:false, vel:1 };   // vel: 1x, 2x ou 3x (vale para o jogo todo)
+const VELOCIDADES = [1, 2, 3];
 const durDia = () => (CFG.segundosPorDia[S.fase] || 10) * 1000;
+const restante = () => Math.max(0, Math.ceil((durDia()-relogio.t) / (1000*relogio.vel)));
 function relogioHTML(){
-  const rest = Math.ceil((durDia()-relogio.t)/1000), pct = relogio.t/durDia()*100;
-  const rotulo = `Mais ${CFG.diasPorTurno} dias em`;
+  const pct = relogio.t/durDia()*100;
   return `<div class="clock"><div class="clock-top">
-    <span id="diaTxt">${relogio.pausado ? 'Tempo pausado' : `${rotulo} <b id="diaSeg">${rest}</b> s`}</span>
-    <button class="btn ghost" id="pausa">${relogio.pausado ? 'Continuar' : 'Pausar'}</button></div>
-    <div class="bar"><i id="diaBar" style="width:${pct}%"></i></div></div>`;
+    <span id="diaTxt">${relogio.pausado ? 'Tempo pausado' : `Mais ${CFG.diasPorTurno} dias em <b id="diaSeg">${restante()}</b> s`}</span></div>
+    <div class="bar"><i id="diaBar" style="width:${pct}%"></i></div>
+    <div class="clock-btns">
+      <button class="btn ghost" id="pausa">${relogio.pausado ? 'Continuar' : 'Pausar'}</button>
+      <button class="btn ghost" id="velo" aria-label="Velocidade do tempo: ${relogio.vel}x">Velocidade ${relogio.vel}x</button>
+      <button class="btn ghost" id="pular">Avançar ${CFG.diasPorTurno} dias</button>
+    </div></div>`;
 }
 function ligarRelogio(){
   $('pausa').onclick = () => { relogio.pausado = !relogio.pausado; telaGerenciar(); };
+  $('velo').onclick = () => {
+    relogio.vel = VELOCIDADES[(VELOCIDADES.indexOf(relogio.vel)+1) % VELOCIDADES.length];
+    telaGerenciar(); aviso(relogio.vel===1 ? 'Tempo na velocidade normal.' : `Tempo ${relogio.vel} vezes mais rápido.`);
+  };
+  $('pular').onclick = () => { relogio.t = 0; relogio.pausado = false; avancarTempo(); };   // antecipa a próxima semana
 }
 function zerarRelogio(){ relogio.t = 0; relogio.pausado = false; }
 setInterval(() => {
   // só corre na tela de cuidado, sem janela aberta e com o jogo visível
   if (S.tela!=='gerenciar' || relogio.pausado || !$('modal').hidden || document.hidden) return;
-  relogio.t += 250;
+  relogio.t += 250 * relogio.vel;
   const bar=$('diaBar'), seg=$('diaSeg');
   if (bar) bar.style.width = Math.min(100, relogio.t/durDia()*100) + '%';
-  if (seg) seg.textContent = Math.max(0, Math.ceil((durDia()-relogio.t)/1000));
+  if (seg) seg.textContent = restante();
   if (relogio.t >= durDia()){ relogio.t = 0; avancarTempo(); }
 }, 250);
 
