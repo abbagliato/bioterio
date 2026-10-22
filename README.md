@@ -1,6 +1,6 @@
-# Cuidador(a) do Biotério
+# Jovem Bioterista
 
-Jogo educativo para celular que ensina às crianças a rotina de cuidado de camundongos em um biotério.
+Jovem Bioterista é um jogo educativo para celular que ensina às crianças a rotina de cuidado de camundongos em um biotério.
 
 **Jogar:** https://abbagliato.github.io/bioterio/
 

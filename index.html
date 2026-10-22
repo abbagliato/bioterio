@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Jogo educativo: aprenda a rotina de cuidado dos camundongos no biotério.">
+<meta name="description" content="Jovem Bioterista: jogo educativo sobre a rotina de cuidado dos camundongos no biotério.">
 <style>*,*::before,*::after{box-sizing:border-box}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
-<title>Cuidador do Biotério</title>
+<title>Jovem Bioterista</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;800&display=swap">
@@ -20,6 +20,7 @@
   --good:#2F9A55; --warn:#D9822B; --bad:#C2453B;
   --display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
   --body:"Nunito","Segoe UI",system-ui,sans-serif;
+  --aviso-h:112px; /* espaço reservado para os avisos no rodapé */
   color-scheme:light;
 }
 [hidden]{display:none!important}
@@ -31,7 +32,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;touch-
 button:focus-visible,input:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
 h1,h2,h3{font-family:var(--display);line-height:1.1;margin:0;text-wrap:balance}
 p{margin:0}
-.app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+.app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding-bottom:calc(var(--aviso-h) + env(safe-area-inset-bottom,0px))}
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 
 /* cabeçalho */
@@ -104,14 +105,14 @@ p{margin:0}
 .pick svg{width:100%;height:auto}
 
 /* mensagens */
-.toast{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:12px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+.toast{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:12px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
   transform:translateY(110%);transition:transform .25s}
 .toast.show{transform:none}
-.toast div{max-width:528px;margin:0 auto;border-radius:16px;padding:12px 14px;font-weight:700;color:#fff;background:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;gap:10px}
+.toast div{max-width:528px;margin:0 auto;border-radius:16px;padding:10px 14px;font-weight:700;font-size:15px;line-height:1.3;color:#fff;background:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;gap:10px}
 .toast.ok div{background:var(--good)} .toast.err div{background:var(--warn)}
 .modal{position:fixed;inset:0;z-index:30;background:rgba(20,40,50,.5);display:flex;align-items:flex-end;justify-content:center}
-.modal .sheet{background:var(--panel);width:100%;max-width:560px;max-height:85%;overflow:auto;border-radius:22px 22px 0 0;
-  padding:18px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.modal .sheet{background:var(--panel);width:100%;max-width:560px;max-height:calc(100% - 24px);overflow:auto;border-radius:22px 22px 0 0;margin-bottom:0;
+  padding:18px max(16px,env(safe-area-inset-right,0px)) calc(20px + var(--aviso-h) + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
 .gloss dt{font-family:var(--display);font-size:18px;color:var(--accent)}
 .gloss dd{margin:0 0 10px}
 .list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
@@ -122,6 +123,14 @@ p{margin:0}
 .cert h2{font-size:26px}
 .cert .name{font-family:var(--display);font-size:28px;color:var(--accent);border-bottom:2px solid var(--line);padding:0 12px}
 .big{font-family:var(--display);font-size:40px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+/* relógio do dia */
+.clock{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+.clock-top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:800}
+.clock-top b{font-variant-numeric:tabular-nums}
+.clock .bar{height:10px;border-radius:999px;background:var(--soft);overflow:hidden}
+.clock .bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .25s linear}
+.clock .btn{min-height:36px;font-size:14px;padding:0 12px;box-shadow:0 2px 0 var(--line)}
 
 /* QR code */
 .qr{display:grid;place-items:center;background:#FFFFFF;border-radius:16px;padding:14px;border:2px solid var(--line)}
@@ -176,7 +185,8 @@ p{margin:0}
 // ---------- CONFIGURAÇÃO (fácil de ajustar) ----------
 const CFG = {
   pontos: { acerto: 10, erro: -3, montagemPerfeita: 20, bonusAbrigo: 5, troca: 15, trocaCedo: -2, repor: 5, alerta: -5, desmameCerto: 40, desmameErrado: -15, separarCerto: 5 },
-  diasPorTurnoFilhotes: 3,   // na fase 3 cada "avançar" pula 3 dias
+  diasPorTurnoFilhotes: 3,   // na fase 3 cada dia do relógio pula 3 dias de idade
+  segundosPorDia: { 2: 10, 3: 8, 5: 12 }, // tempo automático: segundos de cada dia, por fase
   idadeDesmame: 21,          // dias
   turnosRotina: 4,           // fase 2
   turnosDesafio: 5,          // fase 5
@@ -406,7 +416,7 @@ const ARTEFATO_URL = SITE_URL
 const baixarDireto = { save: async ({filename, data}) => {
   const file = new File([data], filename, {type:'image/png'});
   if (navigator.canShare && navigator.canShare({files:[file]}) && matchMedia('(pointer:coarse)').matches){
-    try{ await navigator.share({files:[file], title:'Certificado Cuidador(a) do Biotério'}); return {status:'saved'}; }
+    try{ await navigator.share({files:[file], title:'Certificado Jovem Bioterista'}); return {status:'saved'}; }
     catch(e){ if (e && e.name==='AbortError') throw {code:'declined'}; }
   }
   const u = URL.createObjectURL(data), a = document.createElement('a');
@@ -426,7 +436,7 @@ function telaBloqueado(){
   const fim = S.encerrado;
   main.innerHTML = `<div class="card" style="display:flex;flex-direction:column;gap:12px;text-align:center;align-items:center">
     <div style="width:110px">${avatarSVG(S.genero,S.ap,!!fim)}</div>
-    <span class="tag">${fim ? 'Partida encerrada' : 'Cuidador(a) do Biotério'}</span>
+    <span class="tag">${fim ? 'Partida encerrada' : 'Jovem Bioterista'}</span>
     <h2 style="font-size:26px">${fim ? 'Obrigado por cuidar dos animais!' : 'Escaneie o QR Code para jogar'}</h2>
     <p class="lead">${fim ? 'Para jogar de novo, escaneie o QR Code com a câmera do celular.' : 'Aponte a câmera do celular para o QR Code do jogo. Cada vez que o jogo termina ou a página é recarregada, é preciso escanear de novo.'}</p></div>`;
 }
@@ -476,9 +486,9 @@ async function desenharCertificado(){
   }catch(e){}
   x.textAlign='center'; x.textBaseline='alphabetic';
   x.fillStyle='#1F8A84'; x.font=`800 30px ${CORPO}`; x.fillText('C E R T I F I C A D O', W/2, 450);
-  x.fillStyle='#1D3340'; caber(x,'Cuidador(a) do Biotério',800,78,DISP,880); x.fillText('Cuidador(a) do Biotério', W/2, 545);
+  x.fillStyle='#1D3340'; caber(x,'Jovem Bioterista',800,78,DISP,880); x.fillText('Jovem Bioterista', W/2, 545);
   x.fillStyle='#587080'; x.font=`600 36px ${CORPO}`; x.fillText('Certificamos que', W/2, 625);
-  const nome = S.nome || 'Cuidador(a) do Biotério';
+  const nome = S.nome || 'Jovem Bioterista';
   x.fillStyle='#1F8A84'; caber(x,nome,800,84,DISP,840); x.fillText(nome, W/2, 730);
   x.strokeStyle='#C7DCD7'; x.lineWidth=3; x.beginPath(); x.moveTo(200,760); x.lineTo(W-200,760); x.stroke();
   x.fillStyle='#1D3340'; x.font=`600 36px ${CORPO}`;
@@ -496,7 +506,7 @@ async function baixarCertificado(d){
   try{
     const blob = await desenharCertificado();
     const base = (S.nome||'cuidador').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase() || 'cuidador';
-    await d.save({ filename:`certificado-bioterio-${base}.png`, data:blob });
+    await d.save({ filename:`certificado-jovem-bioterista-${base}.png`, data:blob });
     aviso('Certificado salvo no aparelho!','ok');
   }catch(e){
     const c = e && e.code;
@@ -515,7 +525,7 @@ function telaInicio(){
     <div class="avatar">${avatarSVG(g,S.ap,false)}</div>
     <div style="min-width:0;display:flex;flex-direction:column;gap:6px">
       <span class="tag">Jogo do biotério</span>
-      <h1 style="font-size:30px">Cuidador(a) do Biotério</h1>
+      <h1 style="font-size:30px">Jovem Bioterista</h1>
       <p class="lead">Cuide de camundongos de laboratório como se faz de verdade.</p>
     </div>
   </div>
@@ -616,9 +626,9 @@ function telaEPI(){
 function iniciarFase(){
   const f=S.fase;
   if (f===1) return novaMontagem({destino:'f1', titulo:'Sua primeira gaiola', modo:'inicial'});
-  if (f===2){ S.turno=0; S.trocas=0; S.tela='gerenciar'; render(); return aviso('Cuide da gaiola a cada dia: ração, água e limpeza.'); }
+  if (f===2){ zerarRelogio(); S.turno=0; S.trocas=0; S.tela='gerenciar'; render(); return aviso('Cuide da gaiola a cada dia: ração, água e limpeza.'); }
   if (f===3){
-    const c=S.gaiolas[0].g; S.idadeFilhotes=0; S.turno=0; S.desmameFeito=false;
+    const c=S.gaiolas[0].g; S.idadeFilhotes=0; S.turno=0; S.desmameFeito=false; zerarRelogio();
     if (!c.enriq.includes('ninho')) c.enriq.push('ninho');
     S.filhotes = shuffle(['M','M','M','F','F','F']).map((sx,i)=>({id:'p'+i, sexo:sx, filhote:true, ocultarSexo:true}));
     c.animais = c.animais.filter(a=>!a.filhote).concat(S.filhotes);
@@ -627,7 +637,7 @@ function iniciarFase(){
   }
   if (f===4){ S.separacao={ fila:S.filhotes.map(p=>({...p, ocultarSexo:false})), M:[], F:[] }; S.tela='separar'; render(); return; }
   if (f===5){
-    S.turno=0;
+    S.turno=0; zerarRelogio();
     S.gaiolas.forEach((x,i)=>{ x.g.racao=clamp(60+i*15); x.g.agua=clamp(85-i*20); x.g.sujeira=clamp(25+i*15); });
     S.tela='gerenciar'; render();
     return aviso('Agora são 3 gaiolas! Observe as barras de cada uma.');
@@ -754,6 +764,31 @@ function bemEstar(g){ return clamp(Math.round((g.racao+g.agua+(100-g.sujeira))/3
 function medidor(nome,v){ return `<div class="meter"><span>${nome}: ${Math.round(v)}%</span><div class="bar"><i style="width:${v}%;background:${corNivel(v)}"></i></div></div>`; }
 function rotuloBem(v){ return v>=60?'Animais felizes':v>=30?'Precisam de atenção':'Precisam de você agora!'; }
 
+// ---------- RELÓGIO: o tempo passa sozinho ----------
+const relogio = { t:0, pausado:false };
+const durDia = () => (CFG.segundosPorDia[S.fase] || 10) * 1000;
+function relogioHTML(){
+  const rest = Math.ceil((durDia()-relogio.t)/1000), pct = relogio.t/durDia()*100;
+  const rotulo = S.fase===3 ? `Mais ${CFG.diasPorTurnoFilhotes} dias em` : 'Próximo dia em';
+  return `<div class="clock"><div class="clock-top">
+    <span id="diaTxt">${relogio.pausado ? 'Tempo pausado' : `${rotulo} <b id="diaSeg">${rest}</b> s`}</span>
+    <button class="btn ghost" id="pausa">${relogio.pausado ? 'Continuar' : 'Pausar'}</button></div>
+    <div class="bar"><i id="diaBar" style="width:${pct}%"></i></div></div>`;
+}
+function ligarRelogio(){
+  $('pausa').onclick = () => { relogio.pausado = !relogio.pausado; telaGerenciar(); };
+}
+function zerarRelogio(){ relogio.t = 0; relogio.pausado = false; }
+setInterval(() => {
+  // só corre na tela de cuidado, sem janela aberta e com o jogo visível
+  if (S.tela!=='gerenciar' || relogio.pausado || !$('modal').hidden || document.hidden) return;
+  relogio.t += 250;
+  const bar=$('diaBar'), seg=$('diaSeg');
+  if (bar) bar.style.width = Math.min(100, relogio.t/durDia()*100) + '%';
+  if (seg) seg.textContent = Math.max(0, Math.ceil((durDia()-relogio.t)/1000));
+  if (relogio.t >= durDia()){ relogio.t = 0; avancarTempo(); }
+}, 250);
+
 function telaGerenciar(){
   const f=S.fase;
   const topo = f===3 ? `Filhotes com <b>${S.idadeFilhotes} dias</b>. O desmame é aos ${CFG.idadeDesmame} dias.`
@@ -774,9 +809,9 @@ function telaGerenciar(){
             <button class="btn ghost" data-ac="racao" data-i="${i}">Ração</button>
             <button class="btn ghost" data-ac="agua" data-i="${i}">Água</button>
             <button class="btn ghost" data-ac="trocar" data-i="${i}">Trocar</button>
-          </div></div></div>`; }).join('') + `</div><button class="btn" id="tempo">Próximo dia</button>`;
+          </div></div></div>`; }).join('') + `</div>` + relogioHTML();
     main.querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>acao(b.dataset.ac, +b.dataset.i));
-    $('tempo').onclick=avancarTempo;
+    ligarRelogio();
     return;
   }
   main.innerHTML = `<div class="card"><p>${topo}</p></div>` +
@@ -791,10 +826,9 @@ function telaGerenciar(){
         <button class="btn ghost" data-ac="agua" data-i="${i}">Água</button>
         <button class="btn ghost" data-ac="trocar" data-i="${i}">Trocar</button>
       </div></div>`; }).join('') +
-  (f===3 ? `<div class="row"><button class="btn ghost" id="tempo">Avançar ${CFG.diasPorTurnoFilhotes} dias</button><button class="btn" id="desmamar">Desmamar</button></div>`
-         : `<button class="btn" id="tempo">Próximo dia</button>`);
+  relogioHTML() + (f===3 ? `<button class="btn" id="desmamar">Desmamar</button>` : '');
   main.querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>acao(b.dataset.ac, +b.dataset.i));
-  $('tempo').onclick=avancarTempo;
+  ligarRelogio();
   if (f===3) $('desmamar').onclick=desmamar;
 }
 
@@ -894,13 +928,13 @@ function telaFimFase(){
 
 // ---------- CERTIFICADO ----------
 function telaFinal(){
-  const nome = S.nome || 'Cuidador(a) do Biotério';
+  const nome = S.nome || 'Jovem Bioterista';
   const data = new Date().toLocaleDateString('pt-BR',{day:'numeric',month:'long',year:'numeric'});
   main.innerHTML = `
   <div class="cert">
     <div style="width:110px">${avatarSVG(S.genero,S.ap,true)}</div>
     <span class="tag">Certificado</span>
-    <h2>Cuidador(a) do Biotério</h2>
+    <h2>Jovem Bioterista</h2>
     <p>Certificamos que</p>
     <div class="name"></div>
     <p>concluiu as 5 fases cuidando dos animais com responsabilidade e respeito ao bem-estar animal.</p>
