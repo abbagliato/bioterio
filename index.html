@@ -146,6 +146,19 @@ p{margin:0}
   #printCert{display:block!important;visibility:visible;position:fixed;left:0;top:0;width:297mm;height:210mm;max-width:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
+/* ranking */
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rank li{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:8px;background:var(--soft);border-radius:12px;padding:8px 12px;font-weight:800}
+.rank .pos{font-family:var(--display);font-size:18px;color:var(--muted)}
+.rank .ap{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank .pt{font-family:var(--display);font-size:18px;color:var(--accent);font-variant-numeric:tabular-nums}
+.rank .pod1 .pos{color:#B8860B} .rank .pod2 .pos{color:#6B7B83} .rank .pod3 .pos{color:#A0522D}
+.rank li.meu{background:var(--accent);color:#fff} .rank li.meu .pos,.rank li.meu .pt{color:#fff}
+.rank-tv li{padding:12px 16px;font-size:22px} .rank-tv .pos,.rank-tv .pt{font-size:26px}
+.qr-mini{width:120px;flex:none;background:#fff;border-radius:12px;padding:6px} .qr-mini img{display:block;width:100%}
+.screen[data-tela="ranking"]{grid-template-columns:minmax(0,760px)!important;justify-content:center}
+.screen[data-tela="ranking"]>*{grid-column:1!important}
+
 /* QR code */
 .qr{display:grid;place-items:center;background:#FFFFFF;border-radius:16px;padding:14px;border:2px solid var(--line)}
 .qr img,.qr canvas{width:240px;max-width:100%;height:auto}
@@ -474,7 +487,7 @@ $('glossBtn').onclick = abrirGlossario;
 $('soundBtn').onclick=()=>{ S.som=!S.som; $('soundBtn').textContent=S.som?'♪':'×'; $('soundBtn').setAttribute('aria-label',S.som?'Som ligado':'Som desligado'); if(S.som) somOk(); };
 
 function cabecalho(){
-  $('top').hidden = S.tela==='inicio' || S.tela==='bloqueado';
+  $('top').hidden = S.tela==='inicio' || S.tela==='bloqueado' || S.tela==='ranking';
   $('phaseNum').textContent = S.tela==='final' ? 'Concluído' : `Fase ${S.fase} de 5`;
   $('phaseName').textContent = S.tela==='final' ? 'Certificado' : FASES[S.fase-1];
   $('pts').textContent = S.pontos;
@@ -483,13 +496,15 @@ function cabecalho(){
 function render(){
   cabecalho();
   main.dataset.tela = S.tela;
-  ({ inicio:telaInicio, epi:telaEPI, montar:telaMontar, gerenciar:telaGerenciar, separar:telaSeparar, fimFase:telaFimFase, final:telaFinal, bloqueado:telaBloqueado, gameover:telaFimDeJogo })[S.tela]();
+  ({ inicio:telaInicio, epi:telaEPI, montar:telaMontar, gerenciar:telaGerenciar, separar:telaSeparar, fimFase:telaFimFase, final:telaFinal, bloqueado:telaBloqueado, gameover:telaFimDeJogo, ranking:telaRanking })[S.tela]();
   window.scrollTo(0,0);
 }
 
 // ---------- ACESSO PELO QR CODE ----------
 // Endereço usado no QR Code. Deixe vazio para usar automaticamente o endereço onde o jogo está hospedado.
 const SITE_URL = 'https://abbagliato.github.io/bioterio/';
+// Ranking compartilhado: endereço do App da Web do Google Apps Script (termina em /exec). Vazio = sem ranking.
+const RANKING_URL = '';
 const ARTEFATO_URL = SITE_URL
   || (location.protocol === 'file:' ? null
   : /claude|anthropic/.test(location.hostname) ? 'https://claude.ai/artifact/8r8KHFFP6mxEePndMwN3ij'
@@ -513,8 +528,9 @@ const LIVRE = DESKTOP || /claude|anthropic/.test(location.hostname);
 const HASH = location.hash.slice(1);
 const ACESSO_OK = LIVRE || /^(jogar|c-[a-z0-9]{6,16})$/.test(HASH);
 const ORGANIZADOR = !LIVRE && HASH === 'organizador';
+const TELA_RANKING = HASH === 'ranking';   // #ranking: placar para deixar aberto numa TV do estande
 // Tira o código do endereço: recarregar a página exige escanear de novo
-if (!LIVRE && HASH) { try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){} }
+if (!LIVRE && HASH && !TELA_RANKING) { try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){} }
 
 function telaBloqueado(){
   const fim = S.encerrado;
@@ -637,12 +653,14 @@ function telaInicio(){
       <li><b>Refinamento</b> (<i>Refinement</i>): cuidar melhor dos animais para evitar dor e estresse. É isso que você vai praticar neste jogo!</li></ul>
   </div>
   <button class="btn ghost" id="glossInicio">Glossário: palavras do biotério</button>
+  ${RANKING_URL ? '<button class="btn ghost" id="rankInicio">Ver o ranking</button>' : ''}
   <button class="btn" id="comecar">Começar</button>
   ${LIVRE ? '<button class="btn ghost small" id="qrBtn">QR Code para outros aparelhos</button>' : ''}`;
   if (LIVRE) $('qrBtn').onclick = abrirQR;
   main.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ S.genero=b.dataset.g; S.nome=$('nome').value; telaInicio(); });
   $('sortear').onclick=()=>{ S.ap=sortearAparencia(); S.nome=$('nome').value; telaInicio(); };
   $('glossInicio').onclick=abrirGlossario;
+  if (RANKING_URL) $('rankInicio').onclick=abrirRankingModal;
   $('comecar').onclick=()=>{ S.nome=$('nome').value.trim(); somOk(); irEPI(); };
 }
 
@@ -1110,9 +1128,11 @@ function telaFinal(){
     <p class="lead" style="font-size:14px">"Enviar automático" usa o servidor de e-mails do pendrive (abra o jogo pelo iniciar-jovem-bioterista.bat). "Abrir no Gmail" baixa o PDF e abre o e-mail pronto: é só anexar o arquivo e enviar.</p>
   </div>` : `<button class="btn" id="baixar" hidden>Baixar certificado</button>
   <p class="lead" id="semDownload" hidden style="text-align:center">Para guardar o certificado, tire um print desta tela.</p>`}
+  ${RANKING_URL ? rankingCardHTML() : ''}
   ${LIVRE ? '<button class="btn ghost" id="denovo">Jogar de novo</button>' : '<button class="btn ghost" id="encerrar">Encerrar partida</button>'}`;
   main.querySelector('.name').textContent = nome;
   if (DESKTOP) ligarCertificadoDesktop();
+  if (RANKING_URL) ligarRankingFinal();
   else Promise.resolve(window.claude?.use ? window.claude.use('downloads') : null).catch(()=>null).then(d=>{
     if (!$('baixar')) return;
     if (!d && !window.claude) d = baixarDireto;   // fora do Claude: download pelo navegador
@@ -1218,10 +1238,100 @@ function ligarCertificadoDesktop(){
   };
 }
 
+// ---------- RANKING COMPARTILHADO (Planilha Google) ----------
+const PALAVRAS_PROIBIDAS = ['merda','porra','caralho','bosta','puta','puto','cu','buceta','pinto','piroca','rola','viado','fdp','vsf','pqp','tnc','idiota','imbecil','otario','cacete','foda','foder','fudido','arrombado','corno'];
+function limparApelido(t){
+  const a = String(t||'').replace(/[^A-Za-zÀ-ÖØ-öø-ÿ0-9 ]/g,'').replace(/\s+/g,' ').trim().slice(0,15);
+  const base = a.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(), junto = base.replace(/ /g,'');
+  const ruim = PALAVRAS_PROIBIDAS.some(p => base.split(' ').includes(p) || (p.length>=4 && junto.includes(p)));
+  return ruim ? '' : a;
+}
+async function rankingTop(n=10){
+  const r = await fetch(`${RANKING_URL}?acao=top&n=${n}&t=${Date.now()}`, { redirect:'follow' });
+  const j = await r.json(); if (!j.ok) throw new Error('ranking'); return j;
+}
+async function rankingEnviar(apelido, pontos){
+  // text/plain evita a checagem extra (CORS) que o Google não responde
+  const r = await fetch(RANKING_URL, { method:'POST', redirect:'follow', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ apelido, pontos, onde: DESKTOP ? 'computador' : 'celular' }) });
+  return r.json();
+}
+function listaRankingHTML(top, destaque, grande){
+  if (!top.length) return '<p class="lead">Ainda ninguém no ranking. Seja o primeiro!</p>';
+  return `<ol class="rank${grande?' rank-tv':''}">${top.map((l,i)=>{
+    const meu = destaque && l.apelido===destaque.apelido && l.pontos===destaque.pontos;
+    return `<li class="${meu?'meu':''}${i<3?' pod'+(i+1):''}"><span class="pos">${i+1}º</span><span class="ap">${escHTML(l.apelido)}</span><span class="pt">${l.pontos}</span></li>`; }).join('')}</ol>`;
+}
+function rankingCardHTML(){
+  return `<div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <h3>Ranking dos Jovens Bioteristas</h3>
+    <div id="rankForm" style="display:flex;flex-direction:column;gap:10px">
+      <p class="lead" style="font-size:14px">Use só o primeiro nome ou um apelido. Ele vai aparecer para todos os jogadores. Nada de sobrenome!</p>
+      <label class="field" for="apelido">Apelido no ranking<input id="apelido" maxlength="15" autocomplete="off" placeholder="Ex.: Ana"></label>
+      <button class="btn" id="rankEnviar">Entrar no ranking com ${S.pontos} pontos</button>
+    </div>
+    <p id="rankMsg" style="font-weight:800" hidden></p>
+    <div id="rankLista"><p class="lead">Carregando o ranking...</p></div>
+  </div>`;
+}
+function ligarRankingFinal(){
+  const enviado = S.rankEnviado;
+  $('apelido').value = enviado ? enviado.apelido : (S.nome||'').split(' ')[0].slice(0,15);
+  const mostrar = (j, dest) => { if ($('rankLista')) $('rankLista').innerHTML = listaRankingHTML(j.top, dest); };
+  if (enviado){ $('rankForm').hidden = true; $('rankMsg').hidden = false; $('rankMsg').textContent = enviado.msg; }
+  rankingTop(10).then(j=>mostrar(j, enviado)).catch(()=>{ if ($('rankLista')) $('rankLista').innerHTML='<p class="lead">Sem conexão com o ranking agora.</p>'; });
+  $('rankEnviar').onclick = async () => {
+    const apelido = limparApelido($('apelido').value);
+    if (!apelido) { $('apelido').focus(); return aviso('Escolha um apelido só com letras e números, sem palavrões.','err'); }
+    const btn = $('rankEnviar'); btn.disabled = true; btn.textContent = 'Enviando...';
+    try{
+      const j = await rankingEnviar(apelido, S.pontos);
+      if (!j.ok) throw new Error(j.erro || 'falha');
+      const msg = j.posicao ? `Você ficou em ${j.posicao}º lugar entre ${j.total} jogadores!` : 'Pontuação registrada!';
+      S.rankEnviado = { apelido: j.apelido || apelido, pontos: S.pontos, msg };
+      $('rankForm').hidden = true; $('rankMsg').hidden = false; $('rankMsg').textContent = msg;
+      mostrar(j, S.rankEnviado); somFesta();
+    }catch(e){
+      aviso(e && e.message && e.message!=='falha' && e.message!=='Failed to fetch' ? e.message : 'Não consegui falar com o ranking. Confira a internet e tente de novo.','err');
+      btn.disabled = false; btn.textContent = `Entrar no ranking com ${S.pontos} pontos`;
+    }
+  };
+}
+function abrirRankingModal(){
+  abrirModal(`<span class="tag">Ranking</span><h2>Os melhores Jovens Bioteristas</h2>
+    <div id="rankModal"><p class="lead">Carregando o ranking...</p></div>
+    <button class="btn" onclick="fecharModal()">Voltar</button>`);
+  rankingTop(10).then(j=>{ if ($('rankModal')) $('rankModal').innerHTML = listaRankingHTML(j.top); })
+    .catch(()=>{ if ($('rankModal')) $('rankModal').innerHTML = '<p class="lead">Sem conexão com o ranking agora.</p>'; });
+}
+// Tela de placar para TV/monitor: atualiza sozinha a cada 30 segundos
+function telaRanking(){
+  main.innerHTML = `<div class="card" style="display:flex;flex-direction:column;gap:14px">
+    <span class="tag">Ranking ao vivo</span>
+    <h1 style="font-size:40px">Jovem Bioterista</h1>
+    <div id="rankTV"><p class="lead">Carregando o ranking...</p></div>
+    <p class="lead" id="rankHora"></p>
+  </div>
+  <div class="card" style="display:flex;gap:14px;align-items:center">
+    <div class="qr-mini">${QR_FIXO ? `<img src="${QR_FIXO.img}" alt="QR Code do jogo">` : ''}</div>
+    <p style="font-weight:800">Leia o QR Code com a câmera do celular e jogue também!</p>
+  </div>`;
+  atualizarTV();
+}
+function atualizarTV(){
+  rankingTop(10).then(j=>{
+    if (!$('rankTV')) return;
+    $('rankTV').innerHTML = listaRankingHTML(j.top, null, true);
+    $('rankHora').textContent = `${j.total} partidas · atualizado às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+  }).catch(()=>{ if ($('rankHora')) $('rankHora').textContent = 'Sem conexão com o ranking. Tentando de novo...'; });
+}
+setInterval(()=>{ if (S.tela==='ranking') atualizarTV(); }, 30000);
+
 // ---------- INÍCIO ----------
 window.claude?.hot?.snapshot?.(()=>({S,B}));
 const iniciar = d => {
   if (d && d.S){ S=d.S; B=d.B; }
+  else if (TELA_RANKING && RANKING_URL) S.tela='ranking';
   else if (!ACESSO_OK) S.tela='bloqueado';   // sem QR Code: pede para escanear
   render();
   if (ORGANIZADOR) abrirQR();                 // endereço #organizador mostra o QR Code do jogo
